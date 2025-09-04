@@ -114,3 +114,13 @@ If you use Dandelion, please cite our paper:
 # C Dependencies
 
 For testing the C code to interact with Cheri we are using unity which is included directly in the project.
+
+# Unikraft (IN PROGRESS)
+To try a Unikraft build of Dandelion, use
+```
+KRAFTKIT_TARGET=dandelion-os cargo +nightly build -Z build-std=std,panic_abort --target x86_64-unikraft-linux-musl --features=mmu,reqwest_io
+```
+You can make sure first that the native build works via 
+```
+cargo build --bin dandelion_server --features=mmu,reqwest_io
+```
