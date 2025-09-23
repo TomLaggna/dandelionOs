@@ -124,3 +124,11 @@ You can make sure first that the native build works via
 ```
 cargo build --bin dandelion_server --features=mmu,reqwest_io
 ```
+
+## Current state
+Migration to Unikraft is in Progress, only parts of dandelion are included in the build. To make a unikraft build, use
+```
+KRAFTKIT_TARGET=dandelion-os cargo +nightly build -Z build-std=std,panic_abort --target x86_64-unikraft-linux-musl
+```
+Run the built image by `kraft run --rm --plat qemu --arch x86_64 -p 8080:8080 .`
+During migration, a webserver is included, try reaching it via `curl localhost:8080`
