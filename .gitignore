@@ -27,6 +27,7 @@ Cargo.lock
 
 # Unikraft
 .unikraft/
+.config.dandelion-os_*
 
 # misc ignores
 misc/
