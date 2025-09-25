@@ -666,19 +666,24 @@
 //         }
 //     }
 // }
-use tiny_http::{Server, Response};
+use axum::{routing::get, Router};
 
-fn main() -> std::io::Result<()> {
-    let server = Server::http("0.0.0.0:8080").unwrap();
-    let port = server.server_addr().to_ip().unwrap().port();
-    println!("Now listening on port {port}");
+#[tokio::main]
+async fn main() {
+    // initialize tracing
+    tracing_subscriber::fmt::init();
 
-    for request in server.incoming_requests() {
-        println!("Received {request:?}");
+    // build our application with a route
+    let app = Router::new()
+        // `GET /` goes to `root`
+        .route("/", get(root));
 
-        let response = Response::from_string("Hello, world!\r\n");
-        request.respond(response)?;
-    }
+    // run our app with hyper, listening globally on port 3000
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
 
-    Ok(())
+// basic handler that responds with a static string
+async fn root() -> &'static str {
+    "Hello, World!\n"
 }

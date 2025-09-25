@@ -2,7 +2,13 @@ spec: v0.6
 
 name: dandelion-os
 
-unikraft: stable
+unikraft:
+  version: stable
+  kconfig:
+    CONFIG_LIBPOSIX_EVENTFD: 'y'
+    CONFIG_LIBPOSIX_UNIXSOCKET: 'y'
+    CONFIG_LIBUKNETDEV_EINFO_LIBPARAM: 'y'
+    CONFIG_LIBUKRANDOM_GETRANDOM: 'y'
 
 libraries:
   musl: stable
@@ -13,9 +19,9 @@ libraries:
       CONFIG_LWIP_TCP: 'y'
       CONFIG_LWIP_THREADS: 'y'
       CONFIG_LWIP_SOCKET: 'y'
-      CONFIG_LWIP_AUTOIFACE: 'y'
-      CONFIG_LWIP_IPV4: 'y'
       CONFIG_LWIP_DHCP: 'y'
+      CONFIG_LWIP_IPV4: 'y'
+      CONFIG_LWIP_AUTOIFACE: 'y'
 
 targets:
 - qemu/x86_64
