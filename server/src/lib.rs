@@ -1,4 +1,4 @@
-// pub mod config;
+pub mod config;
 
 // use dandelion_commons::{records::Recorder, DandelionError};
 // use dispatcher::composition::CompositionSet;
