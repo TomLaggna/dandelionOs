@@ -1,8 +1,8 @@
 // use core_affinity::{self, CoreId};
-// use dandelion_commons::{
-//     records::{Archive, Recorder},
-//     DandelionResult,
-// };
+use dandelion_commons::{
+    records::{Archive, Recorder},
+    DandelionResult,
+};
 // use dandelion_server::DandelionBody;
 // use dispatcher::{
 //     composition::CompositionSet,
@@ -24,19 +24,19 @@
 //     DataItem, DataSet, Position,
 // };
 // use serde::Deserialize;
-// use std::{
-//     collections::BTreeMap,
-//     convert::Infallible,
-//     fs::read_to_string,
-//     io::Write,
-//     net::SocketAddr,
-//     path::PathBuf,
-//     sync::{
-//         atomic::{AtomicUsize, Ordering},
-//         Arc, OnceLock,
-//     },
-//     time::Instant,
-// };
+use std::{
+    collections::BTreeMap,
+    convert::Infallible,
+    fs::read_to_string,
+    io::Write,
+    net::SocketAddr,
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, OnceLock,
+    },
+    time::Instant,
+};
 // use tokio::{
 //     net::TcpListener,
 //     runtime::Builder,
@@ -356,8 +356,8 @@
 //     }
 // }
 
-// /// Recording setup
-// static TRACING_ARCHIVE: OnceLock<Archive> = OnceLock::new();
+/// Recording setup
+static TRACING_ARCHIVE: OnceLock<Archive> = OnceLock::new();
 
 // async fn dispatcher_loop(
 //     mut request_receiver: mpsc::Receiver<DispatcherCommand>,
@@ -670,8 +670,21 @@ use axum::{routing::get, Router};
 
 #[tokio::main]
 async fn main() {
+    let default_warn_level = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "warn"
+    };
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_warn_level))
+        .init();
+
+    // Initilize metric collection
+    match TRACING_ARCHIVE.set(Archive::init()) {
+        Ok(_) => (),
+        Err(_) => panic!("Failed to initialize tracing archive"),
+    }
+
     // setup a webserver using tokio/axum(hyper)
-    tracing_subscriber::fmt::init();
     let app = Router::new()
         .route("/", get(root));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
