@@ -16,7 +16,9 @@ use dandelion_commons::{
 //     service::service_fn,
 //     Request, Response,
 // };
-// use log::{debug, error, info, trace, warn};
+use log::{debug, error, info, trace, warn};
+use machine_interface::{
+    function_driver::ComputeResource};
 // use machine_interface::{
 //     function_driver::ComputeResource,
 //     machine_config::{DomainType, EngineType},
@@ -37,14 +39,14 @@ use std::{
     },
     time::Instant,
 };
-// use tokio::{
-//     net::TcpListener,
-//     runtime::Builder,
-//     select,
-//     signal::unix::SignalKind,
-//     spawn,
-//     sync::{mpsc, oneshot},
-// };
+use tokio::{
+    net::TcpListener,
+    runtime::Builder,
+    select,
+    signal::unix::SignalKind,
+    spawn,
+    sync::{mpsc, oneshot},
+};
 
 // const FUNCTION_FOLDER_PATH: &str = "/tmp/dandelion_server";
 
@@ -696,6 +698,18 @@ async fn root() -> &'static str {
     // check if there is a configuration file
     let config = dandelion_server::config::DandelionConfig::get_config();
     println!("config: {:?}", config);
+
+    // find available resources
+    let num_phyiscal_cores = u8::try_from(num_cpus::get_physical()).unwrap();
+    let num_virt_cores = u8::try_from(num_cpus::get()).unwrap();
+    if num_phyiscal_cores != num_virt_cores {
+        warn!(
+            "Hyperthreading might be enabled detected {} logical and {} physical cores",
+            num_virt_cores, num_phyiscal_cores
+        );
+    }
+
+    let resource_conversion = |core_index| ComputeResource::CPU(core_index);
 
     "Hello, World!\n"
 }

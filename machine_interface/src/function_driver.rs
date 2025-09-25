@@ -90,11 +90,11 @@
 //     }
 // }
 
-// #[derive(Debug, Clone, Copy)]
-// pub enum ComputeResource {
-//     CPU(u8),
-//     GPU(u8),
-// }
+#[derive(Debug, Clone, Copy)]
+pub enum ComputeResource {
+    CPU(u8),
+    GPU(u8),
+}
 
 // pub enum WorkToDo {
 //     FunctionArguments {
