@@ -709,7 +709,51 @@ async fn root() -> &'static str {
         );
     }
 
+    info!("Detected cores: {} logical and {} physical",
+            num_virt_cores, num_phyiscal_cores);
+
     let resource_conversion = |core_index| ComputeResource::CPU(core_index);
+    
+    let dispatcher_cores = config.get_dispatcher_cores();
+    let frontend_cores = config.get_frontend_cores();
+    let communication_cores: Vec<_> = config
+        .get_communication_cores()
+        .into_iter()
+        .map(|core| resource_conversion(core))
+        .collect();
+    let compute_cores: Vec<_> = config
+        .get_computation_cores()
+        .into_iter()
+        .map(|core| resource_conversion(core))
+        .collect();
+
+    println!("core allocation:");
+    println!("frontend cores {:?}", frontend_cores);
+    println!("dispatcher cores: {:?}", dispatcher_cores);
+    println!("communication cores: {:?}", communication_cores);
+    println!("compute cores: {:?}", compute_cores);
+
+    // make multithreaded front end runtime
+    // set up tokio runtime, need io in any case
+    let mut runtime_builder = Builder::new_multi_thread();
+    runtime_builder.enable_io();
+    runtime_builder.worker_threads(frontend_cores.len());
+    runtime_builder.on_thread_start(move || {
+        // static ATOMIC_INDEX: AtomicUsize = AtomicUsize::new(0);
+        // let core_index = ATOMIC_INDEX.fetch_add(1, Ordering::SeqCst);
+        // if !core_affinity::set_for_current(CoreId {
+        //     id: frontend_cores[core_index].into(),
+        // }) {
+        //     return;
+        // }
+        info!(
+            "Frontend thread running on core {}",
+            frontend_cores[0]
+        );
+    });
+    runtime_builder.global_queue_interval(10);
+    runtime_builder.event_interval(10);
+    // let runtime = runtime_builder.build().unwrap();
 
     "Hello, World!\n"
 }

@@ -130,5 +130,23 @@ Migration to Unikraft is in Progress, only parts of dandelion are included in th
 ```
 KRAFTKIT_TARGET=dandelion-os cargo +nightly build -Z build-std=std,panic_abort --target x86_64-unikraft-linux-musl
 ```
-Run the built image by `kraft run --rm --plat qemu --arch x86_64 -p 8080:8080 .`
-During migration, a webserver is included, try reaching it via `curl localhost:8080`
+__note on instability__: when there are multiple workspace members, kraft seems to have issues with parallelism; you have to run the build command multiple times until it works. To ensure progress, you can pass in `-j 1` to cargo s.t. at least one member is built.
+
+Run the built image by `kraft run --rm --plat qemu --arch x86_64 -p 3000:3000 .`
+During migration, a webserver is included, try reaching it via `curl localhost:3000`
+
+__multicore__: Currently, multicore __does not work__.
+If you need more than 1 core, you need to run qemu directly instead of kraft run:
+```
+qemu-system-x86_64 \
+-kernel .unikraft/build/dandelion-os_qemu-x86_64 \
+-nographic \
+-m 128M \
+-device virtio-net-pci,mac=02:b0:b0:d3:d2:01,netdev=hostnet0 \
+-netdev user,id=hostnet0,hostfwd=tcp::3000-:3000 \
+--enable-kvm \
+-cpu max \
+-smp cores=3
+```
+
+Use CTRL-a+x to stop.

@@ -4,7 +4,7 @@ use clap::Parser;
 
 const DEFAULT_CONFIG_PATH: &str = "./dandelion.config";
 const DEFAULT_PORT: u16 = 8080;
-const DEFAULT_SINGLE_CORE: bool = false;
+const DEFAULT_SINGLE_CORE: bool = true;
 const DEFAULT_TIMESTAMP_COUNT: usize = 1000;
 
 #[derive(serde::Deserialize, Parser, Debug)]
