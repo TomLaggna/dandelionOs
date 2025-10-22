@@ -1,16 +1,16 @@
-// use crate::{
-//     composition::{
-//         get_sharding, Composition, CompositionSet, InputSetDescriptor, JoinStrategy, ShardingMode,
-//     },
-//     execution_qs::EngineQueue,
-//     function_registry::{FunctionRegistry, FunctionType, Metadata},
-//     resource_pool::ResourcePool,
-// };
+use crate::{
+    // composition::{
+    //     get_sharding, Composition, CompositionSet, InputSetDescriptor, JoinStrategy, ShardingMode,
+    // },
+    // execution_qs::EngineQueue,
+    // function_registry::{FunctionRegistry, FunctionType, Metadata},
+    resource_pool::ResourcePool,
+};
 // use core::pin::Pin;
-// use dandelion_commons::{
-//     records::{RecordPoint, Recorder},
-//     DandelionError, DandelionResult, DispatcherError, FunctionId,
-// };
+use dandelion_commons::{
+    records::{RecordPoint, Recorder},
+    DandelionError, DandelionResult, DispatcherError, FunctionId,
+};
 // use futures::{
 //     future::{join_all, ready, Either},
 //     stream::{FuturesUnordered, StreamExt},
@@ -18,74 +18,89 @@
 // };
 // use itertools::Itertools;
 // use log::{debug, trace};
-// use machine_interface::{
-//     function_driver::{Driver, FunctionConfig, WorkToDo},
-//     machine_config::{
-//         get_available_domains, get_available_drivers, get_compatibilty_table, DomainType,
-//         EngineType,
-//     },
-//     memory_domain::{Context, MemoryDomain, MemoryResource},
-// };
-// use std::{
-//     collections::{BTreeMap, BTreeSet},
-//     sync::Arc,
-// };
+use machine_interface::{
+    // function_driver::{Driver, FunctionConfig, WorkToDo},
+    machine_config::{
+        // get_available_domains, get_available_drivers, get_compatibilty_table,
+        EngineType, DomainType
+    },
+    memory_domain::{
+        // Context, MemoryDomain, 
+        MemoryResource},
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
-// #[derive(Debug, Clone)]
-// pub enum DispatcherInput {
-//     None,
-//     Set(CompositionSet),
-// }
+#[derive(Debug, Clone)]
+pub enum DispatcherInput {
+    None,
+    // Set(CompositionSet),
+}
 
-// // TODO here and in registry can probably replace driver and loader function maps with fixed size arrays
-// // That have compile time size and static indexing
-// // TODO also here and in registry replace Arc Box with static references from leaked boxes for things we expect to be there for
-// // the entire execution time anyway
+// TODO here and in registry can probably replace driver and loader function maps with fixed size arrays
+// That have compile time size and static indexing
+// TODO also here and in registry replace Arc Box with static references from leaked boxes for things we expect to be there for
+// the entire execution time anyway
 // pub struct Dispatcher {
 //     domains: BTreeMap<DomainType, (Arc<Box<dyn MemoryDomain>>, Box<EngineQueue>)>,
 //     engine_queues: BTreeMap<EngineType, Box<EngineQueue>>,
 //     type_map: BTreeMap<EngineType, DomainType>,
 //     function_registry: FunctionRegistry,
 // }
+pub struct Dispatcher {
+    domains: BTreeMap<i64, i64>,
+    engine_queues: BTreeMap<i64, i64>,
+    type_map: BTreeMap<i64, i64>,
+    function_registry: BTreeMap<i64, i64>,
+}
 
-// impl Dispatcher {
-//     pub fn init(
-//         mut resource_pool: ResourcePool,
-//         memory_resources: BTreeMap<DomainType, MemoryResource>,
-//     ) -> DandelionResult<Dispatcher> {
-//         // get machine specific configurations
-//         let type_map = get_compatibilty_table();
-//         let domains = get_available_domains(memory_resources);
-//         let drivers = get_available_drivers();
+impl Dispatcher {
+    pub fn init(
+        mut resource_pool: ResourcePool,
+        memory_resources: BTreeMap<DomainType, MemoryResource>,
+    ) -> DandelionResult<Dispatcher> {
+        // // get machine specific configurations
+        // let type_map = get_compatibilty_table();
+        // let domains = get_available_domains(memory_resources);
+        // let drivers = get_available_drivers();
 
-//         // Insert a work queue for each domain and use up all engine resource available
-//         let mut domain_map = BTreeMap::new();
-//         let mut engine_queues = BTreeMap::new();
-//         let mut registry_drivers: BTreeMap<EngineType, (&'static dyn Driver, Box<EngineQueue>)> =
-//             BTreeMap::new();
-//         for (engine_type, driver) in drivers.into_iter() {
-//             let work_queue = Box::new(EngineQueue::new());
-//             while let Ok(Some(resource)) = resource_pool.sync_acquire_engine_resource(engine_type) {
-//                 driver.start_engine(resource, work_queue.clone())?;
-//             }
-//             let domain_type = type_map.get(&engine_type).unwrap();
-//             let domain = domains.get(domain_type).unwrap().clone();
-//             domain_map.insert(*domain_type, (domain, work_queue.clone()));
-//             engine_queues.insert(engine_type, work_queue.clone());
-//             registry_drivers.insert(
-//                 engine_type,
-//                 (driver as &'static dyn Driver, work_queue.clone()),
-//             );
-//         }
-//         let function_registry = FunctionRegistry::new(registry_drivers, &type_map, &domains);
-
-//         return Ok(Dispatcher {
-//             domains: domain_map,
-//             engine_queues,
-//             type_map,
-//             function_registry,
-//         });
-//     }
+        // // Insert a work queue for each domain and use up all engine resource available
+        // let mut domain_map = BTreeMap::new();
+        // let mut engine_queues = BTreeMap::new();
+        // let mut registry_drivers: BTreeMap<EngineType, (&'static dyn Driver, Box<EngineQueue>)> =
+        //     BTreeMap::new();
+        // for (engine_type, driver) in drivers.into_iter() {
+        //     let work_queue = Box::new(EngineQueue::new());
+        //     while let Ok(Some(resource)) = resource_pool.sync_acquire_engine_resource(engine_type) {
+        //         driver.start_engine(resource, work_queue.clone())?;
+        //     }
+        //     let domain_type = type_map.get(&engine_type).unwrap();
+        //     let domain = domains.get(domain_type).unwrap().clone();
+        //     domain_map.insert(*domain_type, (domain, work_queue.clone()));
+        //     engine_queues.insert(engine_type, work_queue.clone());
+        //     registry_drivers.insert(
+        //         engine_type,
+        //         (driver as &'static dyn Driver, work_queue.clone()),
+        //     );
+        // }
+        // let function_registry = FunctionRegistry::new(registry_drivers, &type_map, &domains);
+ 
+        // return Ok(Dispatcher {
+        //     domains: domain_map,
+        //     engine_queues,
+        //     type_map,
+        //     function_registry,
+        // });
+        return Ok(Dispatcher {
+            domains: BTreeMap::new(),
+            engine_queues: BTreeMap::new(),
+            type_map: BTreeMap::new(),
+            function_registry: BTreeMap::new(),
+        });
+    }
+}
 
 //     pub async fn insert_func(
 //         &self,

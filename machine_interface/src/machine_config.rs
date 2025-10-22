@@ -7,32 +7,32 @@
 //     memory_domain::{MemoryDomain, MemoryResource},
 // };
 
-// /// Enum for all engine types that allows use in lookup structures
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-// pub enum EngineType {
-//     #[cfg(feature = "reqwest_io")]
-//     Reqwest,
-//     #[cfg(feature = "cheri")]
-//     Cheri,
-//     #[cfg(feature = "wasm")]
-//     RWasm,
-//     #[cfg(feature = "mmu")]
-//     Process,
-//     #[cfg(feature = "kvm")]
-//     Kvm,
-// }
+/// Enum for all engine types that allows use in lookup structures
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EngineType {
+    #[cfg(feature = "reqwest_io")]
+    Reqwest,
+    #[cfg(feature = "cheri")]
+    Cheri,
+    #[cfg(feature = "wasm")]
+    RWasm,
+    #[cfg(feature = "mmu")]
+    Process,
+    #[cfg(feature = "kvm")]
+    Kvm,
+}
 
-// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-// pub enum DomainType {
-//     System,
-//     Mmap,
-//     #[cfg(feature = "cheri")]
-//     Cheri,
-//     #[cfg(feature = "wasm")]
-//     RWasm,
-//     #[cfg(feature = "mmu")]
-//     Process,
-// }
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum DomainType {
+    System,
+    Mmap,
+    #[cfg(feature = "cheri")]
+    Cheri,
+    #[cfg(feature = "wasm")]
+    RWasm,
+    #[cfg(feature = "mmu")]
+    Process,
+}
 
 // pub fn get_compatibilty_table() -> BTreeMap<EngineType, DomainType> {
 //     return BTreeMap::from([

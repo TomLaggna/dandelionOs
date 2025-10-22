@@ -239,12 +239,12 @@
 // }
 
 // /// TODO remove clone / copy once we have an implementation that needs an input
-// #[derive(Clone, Copy)]
-// pub enum MemoryResource {
-//     None,
-//     Anonymous { size: usize },
-//     Shared { id: u64, size: usize },
-// }
+#[derive(Clone, Copy)]
+pub enum MemoryResource {
+    None,
+    Anonymous { size: usize },
+    Shared { id: u64, size: usize },
+}
 
 // pub trait MemoryDomain: Sync + Send {
 //     // allocation and distruction

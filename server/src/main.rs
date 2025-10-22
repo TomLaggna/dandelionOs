@@ -4,40 +4,39 @@ use dandelion_commons::{
     DandelionResult,
 };
 // use dandelion_server::DandelionBody;
-// use dispatcher::{
-//     composition::CompositionSet,
-//     dispatcher::{Dispatcher, DispatcherInput},
-//     function_registry::Metadata,
-//     resource_pool::ResourcePool,
-// };
+use dispatcher::{
+    // composition::CompositionSet,
+    dispatcher::{Dispatcher, DispatcherInput},
+    // function_registry::Metadata,
+    resource_pool::ResourcePool,
+};
 // use http_body_util::BodyExt;
-// use hyper::{
-//     body::{Body, Incoming},
-//     service::service_fn,
-//     Request, Response,
-// };
+use hyper::{
+    body::{Body, Incoming},
+    service::service_fn,
+    Request, Response,
+};
 use log::{debug, error, info, trace, warn};
 use machine_interface::{
-    function_driver::ComputeResource};
-// use machine_interface::{
-//     function_driver::ComputeResource,
-//     machine_config::{DomainType, EngineType},
-//     memory_domain::{bytes_context::BytesContext, read_only::ReadOnlyContext, MemoryResource},
-//     DataItem, DataSet, Position,
-// };
+    function_driver::ComputeResource,
+    machine_config::{DomainType},
+    memory_domain::{MemoryResource},
+};
+use machine_interface::{
+    // function_driver::ComputeResource,
+    machine_config::{
+        // DomainType, 
+        EngineType
+    },
+    // memory_domain::{bytes_context::BytesContext, read_only::ReadOnlyContext, MemoryResource},
+    // DataItem, DataSet, Position,
+};
 // use serde::Deserialize;
 use std::{
-    collections::BTreeMap,
-    convert::Infallible,
-    fs::read_to_string,
-    io::Write,
-    net::SocketAddr,
-    path::PathBuf,
-    sync::{
+    collections::BTreeMap, convert::Infallible, fs::read_to_string, io::Write, net::SocketAddr, path::PathBuf, string, sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, OnceLock,
-    },
-    time::Instant,
+    }, time::Instant
 };
 use tokio::{
     net::TcpListener,
@@ -50,27 +49,29 @@ use tokio::{
 
 // const FUNCTION_FOLDER_PATH: &str = "/tmp/dandelion_server";
 
-// enum DispatcherCommand {
-//     FunctionRequest {
-//         name: String,
-//         inputs: Vec<DispatcherInput>,
-//         is_cold: bool,
-//         start_time: Instant,
-//         callback: oneshot::Sender<DandelionResult<(Vec<Option<CompositionSet>>, Recorder)>>,
-//     },
-//     FunctionRegistration {
-//         name: String,
-//         engine_type: EngineType,
-//         context_size: usize,
-//         path: String,
-//         metadata: Metadata,
-//         callback: oneshot::Sender<DandelionResult<u64>>,
-//     },
-//     CompositionRegistration {
-//         composition: String,
-//         callback: oneshot::Sender<DandelionResult<()>>,
-//     },
-// }
+enum DispatcherCommand {
+    FunctionRequest {
+        name: String,
+        inputs: Vec<DispatcherInput>,
+        is_cold: bool,
+        start_time: Instant,
+        // callback: oneshot::Sender<DandelionResult<(Vec<Option<CompositionSet>>, Recorder)>>,
+        callback: oneshot::Sender<DandelionResult<(Vec<Option<u64>>, Recorder)>>,
+    },
+    FunctionRegistration {
+        name: String,
+        engine_type: EngineType,
+        context_size: usize,
+        path: String,
+        // metadata: Metadata,
+        metadata: u64,
+        callback: oneshot::Sender<DandelionResult<u64>>,
+    },
+    CompositionRegistration {
+        composition: String,
+        callback: oneshot::Sender<DandelionResult<()>>,
+    },
+}
 
 // async fn serve_request(
 //     is_cold: bool,
@@ -668,10 +669,7 @@ static TRACING_ARCHIVE: OnceLock<Archive> = OnceLock::new();
 //         }
 //     }
 // }
-use axum::{routing::get, Router};
-
-#[tokio::main]
-async fn main() {
+fn main() {
     let default_warn_level = if cfg!(debug_assertions) {
         "debug"
     } else {
@@ -686,15 +684,6 @@ async fn main() {
         Err(_) => panic!("Failed to initialize tracing archive"),
     }
 
-    // setup a webserver using tokio/axum(hyper)
-    let app = Router::new()
-        .route("/", get(root));
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
-
-// basic handler that responds with a static string
-async fn root() -> &'static str {
     // check if there is a configuration file
     let config = dandelion_server::config::DandelionConfig::get_config();
     println!("config: {:?}", config);
@@ -739,13 +728,6 @@ async fn root() -> &'static str {
     runtime_builder.enable_io();
     runtime_builder.worker_threads(frontend_cores.len());
     runtime_builder.on_thread_start(move || {
-        // static ATOMIC_INDEX: AtomicUsize = AtomicUsize::new(0);
-        // let core_index = ATOMIC_INDEX.fetch_add(1, Ordering::SeqCst);
-        // if !core_affinity::set_for_current(CoreId {
-        //     id: frontend_cores[core_index].into(),
-        // }) {
-        //     return;
-        // }
         info!(
             "Frontend thread running on core {}",
             frontend_cores[0]
@@ -753,7 +735,162 @@ async fn root() -> &'static str {
     });
     runtime_builder.global_queue_interval(10);
     runtime_builder.event_interval(10);
-    // let runtime = runtime_builder.build().unwrap();
+    let runtime = runtime_builder.build().unwrap();
 
-    "Hello, World!\n"
+    let dispatcher_runtime = Builder::new_multi_thread()
+        .worker_threads(dispatcher_cores.len())
+        .on_thread_start(move || {
+            info!(
+                "Dispatcher thread running on core {}",
+                dispatcher_cores[0]
+            );
+        })
+        .build()
+        .unwrap();
+    let (dispatcher_sender, dispatcher_recevier) = mpsc::channel(1000);
+
+    // set up dispatcher configuration basics
+    let mut pool_map = BTreeMap::new();
+
+    // insert engines for the currentyl selected compute engine type
+    // todo add function to machine config to detect resources and auto generate this
+    #[cfg(feature = "wasm")]
+    let engine_type = EngineType::RWasm;
+    #[cfg(feature = "mmu")]
+    let engine_type = EngineType::Process;
+    #[cfg(feature = "kvm")]
+    let engine_type = EngineType::Kvm;
+    #[cfg(feature = "cheri")]
+    let engine_type = EngineType::Cheri;
+    #[cfg(any(feature = "cheri", feature = "wasm", feature = "mmu", feature = "kvm"))]
+    pool_map.insert(engine_type, compute_cores);
+    #[cfg(feature = "reqwest_io")]
+    pool_map.insert(EngineType::Reqwest, communication_cores);
+    let resource_pool = ResourcePool {
+        engine_pool: futures::lock::Mutex::new(pool_map),
+    };
+
+    // get RAM size
+    // TODO could be a configuration, open question on how to split between engines
+    // or if we unify somehow and have one underlying pool
+    let max_ram = config.get_ram_size();
+
+    let memory_pool = BTreeMap::from([
+        (
+            DomainType::Mmap,
+            MemoryResource::Anonymous { size: max_ram },
+        ),
+        #[cfg(feature = "cheri")]
+        (
+            DomainType::Cheri,
+            MemoryResource::Anonymous { size: max_ram },
+        ),
+        #[cfg(feature = "mmu")]
+        (
+            DomainType::Process,
+            MemoryResource::Shared {
+                id: 0,
+                size: max_ram,
+            },
+        ),
+        #[cfg(feature = "wasm")]
+        (
+            DomainType::RWasm,
+            MemoryResource::Anonymous { size: max_ram },
+        ),
+    ]);
+
+    // Create an ARC pointer to the dispatcher for thread-safe access
+    let dispatcher = Box::leak(Box::new(
+        Dispatcher::init(resource_pool, memory_pool).expect("Should be able to start dispatcher"),
+    ));
+    // start dispatcher
+    // dispatcher_runtime.spawn(dispatcher_loop(dispatcher_recevier, dispatcher));
+
+    let _guard = runtime.enter();
+
+    // TODO would be nice to just print server ready with all enabled features if that would be possible
+    print!("Server start with features:");
+    #[cfg(feature = "cheri")]
+    print!(" cheri");
+    #[cfg(feature = "mmu")]
+    print!(" mmu");
+    #[cfg(feature = "kvm")]
+    print!(" kvm");
+    #[cfg(feature = "wasm")]
+    print!(" wasm");
+    #[cfg(feature = "reqwest_io")]
+    print!(" request_io");
+    #[cfg(feature = "timestamp")]
+    print!(" timestamp");
+    print!("\n");
+
+    // Run this server for... forever... unless I receive a signal!
+    runtime.block_on(service_loop(dispatcher_sender, config.port));
+}
+
+async fn service_loop(request_sender: mpsc::Sender<DispatcherCommand>, port: u16) {
+    // socket to listen to
+    let addr: SocketAddr = SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = TcpListener::bind(addr).await.unwrap();
+    // signal handlers for gracefull shutdown
+    let mut sigterm_stream = tokio::signal::unix::signal(SignalKind::terminate()).unwrap();
+    let mut sigint_stream = tokio::signal::unix::signal(SignalKind::interrupt()).unwrap();
+    let mut sigquit_stream = tokio::signal::unix::signal(SignalKind::quit()).unwrap();
+    loop {
+        tokio::select! {
+            connection_pair = listener.accept() => {
+                let (stream,_) = connection_pair.unwrap();
+                let loop_dispatcher = request_sender.clone();
+                let io = hyper_util::rt::TokioIo::new(stream);
+                tokio::task::spawn(async move {
+                    let service_dispatcher_ptr = loop_dispatcher.clone();
+                    if let Err(err) = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
+                        .serve_connection_with_upgrades(
+                            io,
+                            service_fn(|req| service(req, service_dispatcher_ptr.clone())),
+                        )
+                        .await
+                    {
+                        error!("Request serving failed with error: {:?}", err);
+                    }
+                });
+            }
+            _ = sigterm_stream.recv() => return,
+            _ = sigint_stream.recv() => return,
+            _ = sigquit_stream.recv() => return,
+        }
+    }
+}
+async fn service(
+    req: Request<Incoming>,
+    dispatcher: mpsc::Sender<DispatcherCommand>,
+) -> Result<Response<String>, Infallible> {
+    let uri = req.uri().path();
+    match uri {
+        // TODO rename to cold func and hot func, remove matmul, compute, io
+        // "/register/function" => register_function(req, dispatcher).await,
+        // "/register/composition" => register_composition(req, dispatcher).await,
+        // "/cold/matmul"
+        // | "/cold/matmulstore"
+        // | "/cold/compute"
+        // | "/cold/io"
+        // | "/cold/chain_scaling"
+        // | "/cold/middleware_app"
+        // | "/cold/compression_app"
+        // | "/cold/python_app" => serve_request(true, req, dispatcher).await,
+        // "/hot/matmul"
+        // | "/hot/matmulstore"
+        // | "/hot/compute"
+        // | "/hot/io"
+        // | "/hot/chain_scaling"
+        // | "/hot/middleware_app"
+        // | "/hot/compression_app"
+        // | "/hot/python_app" => serve_request(false, req, dispatcher).await,
+        // "/stats" => serve_stats(req).await,
+        other_uri => {
+            trace!("Received request on {}", other_uri);
+            Ok::<_, Infallible>(Response::new("Hello World!".to_string()))
+        }
+    }
 }
