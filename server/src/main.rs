@@ -5,9 +5,9 @@ use dandelion_commons::{
 };
 // use dandelion_server::DandelionBody;
 use dispatcher::{
-    // composition::CompositionSet,
+    composition::CompositionSet,
     dispatcher::{Dispatcher, DispatcherInput},
-    // function_registry::Metadata,
+    function_registry::Metadata,
     resource_pool::ResourcePool,
 };
 // use http_body_util::BodyExt;
@@ -55,16 +55,14 @@ enum DispatcherCommand {
         inputs: Vec<DispatcherInput>,
         is_cold: bool,
         start_time: Instant,
-        // callback: oneshot::Sender<DandelionResult<(Vec<Option<CompositionSet>>, Recorder)>>,
-        callback: oneshot::Sender<DandelionResult<(Vec<Option<u64>>, Recorder)>>,
+        callback: oneshot::Sender<DandelionResult<(Vec<Option<CompositionSet>>, Recorder)>>,
     },
     FunctionRegistration {
         name: String,
         engine_type: EngineType,
         context_size: usize,
         path: String,
-        // metadata: Metadata,
-        metadata: u64,
+        metadata: Metadata,
         callback: oneshot::Sender<DandelionResult<u64>>,
     },
     CompositionRegistration {
@@ -362,71 +360,71 @@ enum DispatcherCommand {
 /// Recording setup
 static TRACING_ARCHIVE: OnceLock<Archive> = OnceLock::new();
 
-// async fn dispatcher_loop(
-//     mut request_receiver: mpsc::Receiver<DispatcherCommand>,
-//     dispatcher: &'static Dispatcher,
-// ) {
-//     while let Some(dispatcher_args) = request_receiver.recv().await {
-//         match dispatcher_args {
-//             DispatcherCommand::FunctionRequest {
-//                 name,
-//                 inputs,
-//                 is_cold,
-//                 start_time,
-//                 mut callback,
-//             } => {
-//                 debug!("Handling function request for function {}", name);
-//                 let function_future =
-//                     dispatcher.queue_function_by_name(name, inputs, is_cold, start_time);
-//                 spawn(async {
-//                     select! {
-//                         function_output = function_future => {
-//                             // either get an ok, meaning the data was sent, or get the data back
-//                             // no need to handle ok, and nothing useful to do with data if we get it back
-//                             // drop it here to release resources
-//                             let _ = callback.send(function_output);
-//                         }
-//                         _ = callback.closed() => ()
-//                     }
-//                 });
-//             }
-//             DispatcherCommand::FunctionRegistration {
-//                 name,
-//                 engine_type,
-//                 context_size,
-//                 metadata,
-//                 mut callback,
-//                 path,
-//             } => {
-//                 debug!("Handling function registration");
-//                 let insertion_future =
-//                     dispatcher.insert_func(name, engine_type, context_size, path, metadata);
-//                 spawn(async {
-//                     select! {
-//                         result = insertion_future => {
-//                             callback.send(result).unwrap();
-//                         }
-//                         _ = callback.closed() => ()
-//                     }
-//                 });
-//             }
-//             DispatcherCommand::CompositionRegistration {
-//                 composition,
-//                 mut callback,
-//             } => {
-//                 let insertion_future = dispatcher.insert_compositions(composition);
-//                 spawn(async {
-//                     select! {
-//                         result = insertion_future => {
-//                             callback.send(result).unwrap();
-//                         }
-//                         _ = callback.closed() => ()
-//                     }
-//                 });
-//             }
-//         };
-//     }
-// }
+async fn dispatcher_loop(
+    mut request_receiver: mpsc::Receiver<DispatcherCommand>,
+    dispatcher: &'static Dispatcher,
+) {
+    while let Some(dispatcher_args) = request_receiver.recv().await {
+        match dispatcher_args {
+            DispatcherCommand::FunctionRequest {
+                name,
+                inputs,
+                is_cold,
+                start_time,
+                mut callback,
+            } => {
+                debug!("Handling function request for function {}", name);
+                let function_future =
+                    dispatcher.queue_function_by_name(name, inputs, is_cold, start_time);
+                spawn(async {
+                    select! {
+                        function_output = function_future => {
+                            // either get an ok, meaning the data was sent, or get the data back
+                            // no need to handle ok, and nothing useful to do with data if we get it back
+                            // drop it here to release resources
+                            let _ = callback.send(function_output);
+                        }
+                        _ = callback.closed() => ()
+                    }
+                });
+            }
+            DispatcherCommand::FunctionRegistration {
+                name,
+                engine_type,
+                context_size,
+                metadata,
+                mut callback,
+                path,
+            } => {
+                debug!("Handling function registration");
+                let insertion_future =
+                    dispatcher.insert_func(name, engine_type, context_size, path, metadata);
+                spawn(async {
+                    select! {
+                        result = insertion_future => {
+                            callback.send(result).unwrap();
+                        }
+                        _ = callback.closed() => ()
+                    }
+                });
+            }
+            DispatcherCommand::CompositionRegistration {
+                composition,
+                mut callback,
+            } => {
+                let insertion_future = dispatcher.insert_compositions(composition);
+                spawn(async {
+                    select! {
+                        result = insertion_future => {
+                            callback.send(result).unwrap();
+                        }
+                        _ = callback.closed() => ()
+                    }
+                });
+            }
+        };
+    }
+}
 
 // async fn service_loop(request_sender: mpsc::Sender<DispatcherCommand>, port: u16) {
 //     // socket to listen to
@@ -669,7 +667,8 @@ static TRACING_ARCHIVE: OnceLock<Archive> = OnceLock::new();
 //         }
 //     }
 // }
-fn main() {
+#[tokio::main]
+async fn main() {
     let default_warn_level = if cfg!(debug_assertions) {
         "debug"
     } else {
@@ -724,29 +723,29 @@ fn main() {
 
     // make multithreaded front end runtime
     // set up tokio runtime, need io in any case
-    let mut runtime_builder = Builder::new_multi_thread();
-    runtime_builder.enable_io();
-    runtime_builder.worker_threads(frontend_cores.len());
-    runtime_builder.on_thread_start(move || {
-        info!(
-            "Frontend thread running on core {}",
-            frontend_cores[0]
-        );
-    });
-    runtime_builder.global_queue_interval(10);
-    runtime_builder.event_interval(10);
-    let runtime = runtime_builder.build().unwrap();
+    // let mut runtime_builder = Builder::new_multi_thread();
+    // runtime_builder.enable_io();
+    // runtime_builder.worker_threads(frontend_cores.len());
+    // runtime_builder.on_thread_start(move || {
+    //     info!(
+    //         "Frontend thread running on core {}",
+    //         frontend_cores[0]
+    //     );
+    // });
+    // runtime_builder.global_queue_interval(10);
+    // runtime_builder.event_interval(10);
+    // let runtime = runtime_builder.build().unwrap();
 
-    let dispatcher_runtime = Builder::new_multi_thread()
-        .worker_threads(dispatcher_cores.len())
-        .on_thread_start(move || {
-            info!(
-                "Dispatcher thread running on core {}",
-                dispatcher_cores[0]
-            );
-        })
-        .build()
-        .unwrap();
+    // let dispatcher_runtime = Builder::new_multi_thread()
+    //     .worker_threads(dispatcher_cores.len())
+    //     .on_thread_start(move || {
+    //         info!(
+    //             "Dispatcher thread running on core {}",
+    //             dispatcher_cores[0]
+    //         );
+    //     })
+    //     .build()
+    //     .unwrap();
     let (dispatcher_sender, dispatcher_recevier) = mpsc::channel(1000);
 
     // set up dispatcher configuration basics
@@ -776,10 +775,10 @@ fn main() {
     let max_ram = config.get_ram_size();
 
     let memory_pool = BTreeMap::from([
-        (
-            DomainType::Mmap,
-            MemoryResource::Anonymous { size: max_ram },
-        ),
+        // (
+        //     DomainType::Mmap,
+        //     MemoryResource::Anonymous { size: max_ram },
+        // ),
         #[cfg(feature = "cheri")]
         (
             DomainType::Cheri,
@@ -805,9 +804,9 @@ fn main() {
         Dispatcher::init(resource_pool, memory_pool).expect("Should be able to start dispatcher"),
     ));
     // start dispatcher
-    // dispatcher_runtime.spawn(dispatcher_loop(dispatcher_recevier, dispatcher));
+    tokio::spawn(dispatcher_loop(dispatcher_recevier, dispatcher));
 
-    let _guard = runtime.enter();
+    // let _guard = runtime.enter();
 
     // TODO would be nice to just print server ready with all enabled features if that would be possible
     print!("Server start with features:");
@@ -826,7 +825,7 @@ fn main() {
     print!("\n");
 
     // Run this server for... forever... unless I receive a signal!
-    runtime.block_on(service_loop(dispatcher_sender, config.port));
+    tokio::spawn(service_loop(dispatcher_sender, config.port)).await;
 }
 
 async fn service_loop(request_sender: mpsc::Sender<DispatcherCommand>, port: u16) {

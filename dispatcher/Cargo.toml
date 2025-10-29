@@ -11,15 +11,16 @@ tokio = "1"
 dandelion_commons = {path = "../dandelion_commons"}
 machine_interface = {path = "../machine_interface"}
 futures = {version = "0.3.28"}
-# log = "0.4.21"
-# itertools = {version = "0.11", default-features = false, features = ["use_alloc"]}
-# dparser = {path = "../dparser"}
-# crossbeam = "0.8.4"
+log = "0.4.21"
+itertools = {version = "0.11", default-features = false, features = ["use_alloc"]}
+dparser = {path = "../dparser"}
+crossbeam = "0.8.4"
 
 [features]
+default = ["reqwest_io"]
 # cheri = ["machine_interface/cheri"]
 # wasm = ["machine_interface/wasm"]
 # mmu = ["machine_interface/mmu"]
 # kvm = ["machine_interface/kvm"]
-# reqwest_io = ["machine_interface/reqwest_io"]
+reqwest_io = ["machine_interface/reqwest_io"]
 # timestamp = ["dandelion_commons/timestamp"]
