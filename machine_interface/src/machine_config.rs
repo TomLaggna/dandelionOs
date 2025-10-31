@@ -20,6 +20,8 @@ pub enum EngineType {
     Process,
     #[cfg(feature = "kvm")]
     Kvm,
+    #[cfg(feature = "unikernel")]
+    Unikernel,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -32,6 +34,8 @@ pub enum DomainType {
     RWasm,
     #[cfg(feature = "mmu")]
     Process,
+    #[cfg(feature = "unikernel")]
+    Malloc,
 }
 
 pub fn get_compatibilty_table() -> BTreeMap<EngineType, DomainType> {
@@ -46,6 +50,8 @@ pub fn get_compatibilty_table() -> BTreeMap<EngineType, DomainType> {
         (EngineType::Process, DomainType::Process),
         #[cfg(feature = "kvm")]
         (EngineType::Kvm, DomainType::Mmap),
+        #[cfg(feature = "unikernel")]
+        (EngineType::Unikernel, DomainType::Malloc),
     ]);
 }
 
@@ -112,6 +118,11 @@ pub fn get_available_domains(
                 dom_type,
                 Arc::new(crate::memory_domain::wasm::WasmMemoryDomain::init(resource).unwrap()),
             ),
+            #[cfg(feature = "unikernel")]
+            DomainType::Malloc => (
+                dom_type,
+                Arc::new(crate::memory_domain::malloc::MallocMemoryDomain::init(resource).unwrap()),
+            ),
         })
         .collect();
 }
@@ -151,6 +162,13 @@ pub fn get_available_drivers() -> BTreeMap<EngineType, &'static dyn Driver> {
             EngineType::Kvm,
             Box::leak(Box::new(
                 crate::function_driver::compute_driver::kvm::KvmDriver {},
+            )) as &'static dyn Driver,
+        ),
+        #[cfg(feature = "unikernel")]
+        (
+            EngineType::Unikernel,
+            Box::leak(Box::new(
+                crate::function_driver::compute_driver::unikernel::UnikernelDriver {},
             )) as &'static dyn Driver,
         ),
     ]);

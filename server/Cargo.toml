@@ -41,7 +41,7 @@ axum = "0.7"
 # reqwest = { version = "0.12", default-features=false, features = ["http2", "charset", "blocking", "rustls-tls"] }
 
 [features]
-default = ["reqwest_io"]
+default = ["reqwest_io", "unikernel"]
 # archive = []
 # cheri = ["machine_interface/cheri"]
 # mmu = ["machine_interface/mmu"]
@@ -49,3 +49,4 @@ default = ["reqwest_io"]
 # wasm = ["machine_interface/wasm"]
 reqwest_io = ["machine_interface/reqwest_io"]
 # timestamp = ["dispatcher/timestamp"]
+unikernel = ["machine_interface/unikernel"]

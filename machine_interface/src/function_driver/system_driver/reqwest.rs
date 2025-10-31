@@ -840,7 +840,7 @@ impl Driver for ReqwestDriver {
         //     return Err(DandelionError::EngineResourceError);
         // }
         // std::thread::spawn(move || outer_engine(core_id, queue));
-        std::thread::spawn(move || outer_engine(0, queue));
+        tokio::spawn(outer_engine(0, queue));
         return Ok(());
     }
 

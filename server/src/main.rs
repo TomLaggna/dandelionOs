@@ -457,7 +457,7 @@ async fn service(
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let default_warn_level = if cfg!(debug_assertions) {
         "debug"
@@ -551,7 +551,9 @@ async fn main() {
     let engine_type = EngineType::Kvm;
     #[cfg(feature = "cheri")]
     let engine_type = EngineType::Cheri;
-    #[cfg(any(feature = "cheri", feature = "wasm", feature = "mmu", feature = "kvm"))]
+    #[cfg(feature = "unikernel")]
+    let engine_type = EngineType::Unikernel;
+    #[cfg(any(feature = "cheri", feature = "wasm", feature = "mmu", feature = "kvm", feature = "unikernel"))]
     pool_map.insert(engine_type, compute_cores);
     #[cfg(feature = "reqwest_io")]
     pool_map.insert(EngineType::Reqwest, communication_cores);
@@ -587,6 +589,11 @@ async fn main() {
             DomainType::RWasm,
             MemoryResource::Anonymous { size: max_ram },
         ),
+        #[cfg(feature = "unikernel")]
+        (
+            DomainType::Malloc,
+            MemoryResource::Anonymous { size: max_ram },
+        ),
     ]);
 
     // Create an ARC pointer to the dispatcher for thread-safe access
@@ -612,6 +619,8 @@ async fn main() {
     print!(" request_io");
     #[cfg(feature = "timestamp")]
     print!(" timestamp");
+    #[cfg(feature = "unikernel")]
+    print!(" unikernel");
     print!("\n");
 
     // Run this server for... forever... unless I receive a signal!

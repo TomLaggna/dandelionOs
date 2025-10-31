@@ -24,7 +24,7 @@ pub struct ElfConfig {
     #[cfg(feature = "cheri")]
     return_offset: (usize, usize),
     entry_point: usize,
-    #[cfg(feature = "mmu")]
+    #[cfg(any(feature = "mmu", feature = "unikernel"))]
     protection_flags: Arc<Vec<(u32, crate::Position)>>,
 }
 
@@ -150,7 +150,7 @@ impl WorkDone {
     }
 }
 
-pub trait WorkQueue {
+pub trait WorkQueue: Send {
     fn get_engine_args(&self) -> (WorkToDo, crate::promise::Debt);
     fn try_get_engine_args(&self) -> Option<(WorkToDo, crate::promise::Debt)>;
 }

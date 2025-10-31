@@ -4,8 +4,8 @@ use std::alloc::{alloc_zeroed, Layout};
 
 #[derive(Debug)]
 pub struct MallocContext {
-    layout: Layout,
-    storage: Box<u8>,
+    pub layout: Layout,
+    pub storage: Box<u8>,
 }
 
 impl ContextTrait for MallocContext {
