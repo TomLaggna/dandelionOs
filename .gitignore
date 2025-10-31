@@ -25,6 +25,11 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
+# Unikraft
+.unikraft/
+.config.dandelion-os_*
+Makefile.uk
+
 # misc ignores
 misc/
 .vscode/

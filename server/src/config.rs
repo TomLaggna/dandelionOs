@@ -1,11 +1,12 @@
-use core::panic;
+// use core::panic;
 
 use clap::Parser;
 
 const DEFAULT_CONFIG_PATH: &str = "./dandelion.config";
-const DEFAULT_PORT: u16 = 8080;
-const DEFAULT_SINGLE_CORE: bool = false;
+const DEFAULT_PORT: u16 = 3000;
+const DEFAULT_SINGLE_CORE: bool = true;
 const DEFAULT_TIMESTAMP_COUNT: usize = 1000;
+const DEFAULT_RAM: usize = 128; // TODO use the same parameter as in QEMU
 
 #[derive(serde::Deserialize, Parser, Debug)]
 pub struct DandelionConfig {
@@ -29,6 +30,9 @@ pub struct DandelionConfig {
     #[arg(long, env, default_value_t = DEFAULT_TIMESTAMP_COUNT)]
     #[serde(default)]
     pub timestamp_count: usize,
+    #[arg(long, env, default_value_t = DEFAULT_RAM)]
+    #[serde(default)]
+    pub ram_size: usize,
 }
 
 impl DandelionConfig {
@@ -164,5 +168,9 @@ impl DandelionConfig {
             (other_cores as u8..max_core as u8).collect()
         };
         return core_vec;
+    }
+
+    pub fn get_ram_size(&self) -> usize {
+        return self.ram_size;
     }
 }

@@ -13,7 +13,7 @@ use crate::{
 };
 use bytes::Buf;
 use bytes::Bytes;
-use core_affinity::set_for_current;
+// use core_affinity::set_for_current;
 use dandelion_commons::{
     records::{RecordPoint, Recorder},
     DandelionError, DandelionResult,
@@ -789,25 +789,27 @@ async fn engine_loop(queue: Box<dyn WorkQueue + Send>) -> Debt {
     }
 }
 
-fn outer_engine(core_id: u8, queue: Box<dyn WorkQueue + Send>) {
+async fn outer_engine(core_id: u8, queue: Box<dyn WorkQueue + Send>) {
     // set core affinity
-    if !core_affinity::set_for_current(core_affinity::CoreId { id: core_id.into() }) {
-        log::error!("core received core id that could not be set");
-        return;
-    }
-    let runtime = Builder::new_multi_thread()
-        .on_thread_start(move || {
-            if !set_for_current(core_affinity::CoreId { id: core_id.into() }) {
-                return;
-            }
-        })
-        .worker_threads(1)
-        .enable_all()
-        .build()
-        .or(Err(DandelionError::EngineError))
-        .unwrap();
-    let debt = runtime.block_on(engine_loop(queue));
-    drop(runtime);
+    // if !core_affinity::set_for_current(core_affinity::CoreId { id: core_id.into() }) {
+    //     log::error!("core received core id that could not be set");
+    //     return;
+    // }
+    // let runtime = Builder::new_multi_thread()
+    //     // .on_thread_start(move || {
+    //     //     if !set_for_current(core_affinity::CoreId { id: core_id.into() }) {
+    //     //         return;
+    //     //     }
+    //     // })
+    //     .worker_threads(1)
+    //     .enable_all()
+    //     .build()
+    //     .or(Err(DandelionError::EngineError))
+    //     .unwrap();
+    // let debt = runtime.block_on(engine_loop(queue));
+    let handle = tokio::spawn(engine_loop(queue));
+    // drop(runtime);
+    let debt = handle.await.unwrap();
     debt.fulfill(Ok(WorkDone::Resources(vec![ComputeResource::CPU(core_id)])));
 }
 
@@ -820,23 +822,25 @@ impl Driver for ReqwestDriver {
         queue: Box<dyn WorkQueue + Send>,
     ) -> DandelionResult<()> {
         log::debug!("Starting hyper engine");
-        let core_id = match resource {
-            ComputeResource::CPU(core) => core,
-            _ => return Err(DandelionError::EngineResourceError),
-        };
-        // check that core is available
-        let available_cores = match core_affinity::get_core_ids() {
-            None => return Err(DandelionError::EngineResourceError),
-            Some(cores) => cores,
-        };
-        if !available_cores
-            .iter()
-            .find(|x| x.id == usize::from(core_id))
-            .is_some()
-        {
-            return Err(DandelionError::EngineResourceError);
-        }
-        std::thread::spawn(move || outer_engine(core_id, queue));
+        // let core_id = match resource {
+        //     ComputeResource::CPU(core) => core,
+        //     _ => return Err(DandelionError::EngineResourceError),
+        // };
+        // // check that core is available
+        // let available_cores = !vec[0]; 
+        // match core_affinity::get_core_ids() {
+        //     None => return Err(DandelionError::EngineResourceError),
+        //     Some(cores) => cores,
+        // };
+        // if !available_cores
+        //     .iter()
+        //     .find(|x| x.id == usize::from(core_id))
+        //     .is_some()
+        // {
+        //     return Err(DandelionError::EngineResourceError);
+        // }
+        // std::thread::spawn(move || outer_engine(core_id, queue));
+        std::thread::spawn(move || outer_engine(0, queue));
         return Ok(());
     }
 

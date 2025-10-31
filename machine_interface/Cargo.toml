@@ -4,62 +4,61 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["bytes_context"]
+default = ["bytes_context", "reqwest_io"]
 std = []
-cheri = ["std"]
-mmu = ["std"]
-kvm = ["std", "dep:kvm-bindings", "dep:kvm-ioctls"]
-backend_debug = []
+# cheri = ["std"]
+# mmu = ["std"]
+# kvm = ["std", "dep:kvm-bindings", "dep:kvm-ioctls"]
+# backend_debug = []
 reqwest_io = ["std", "dep:reqwest", "dep:http", "dep:bytes"]
 bytes_context = ["std", "dep:bytes"]
-wasm = ["std"]
-timestamp = ["dandelion_commons/timestamp"]
-test_export = []
+# wasm = ["std"]
+# timestamp = ["dandelion_commons/timestamp"]
+# test_export = []
 
 [build-dependencies]
-cmake = "0.1"
+# cmake = "0.1"
 
 [dev-dependencies]
-criterion = "0.4"
-# need to lock this to older version, because morello does not yet have rustc 1.6
-regex = "1.7.1"
-test-log = "0.2.16"
+# criterion = "0.4"
+# # need to lock this to older version, because morello does not yet have rustc 1.6
+# regex = "1.7.1"
+# test-log = "0.2.16"
 
 [dependencies]
 dandelion_commons = { path = "../dandelion_commons" }
-# FFI dependencies
-libc = "0.2"
-nix = "0.26"
-rand = "0.8"
+# # FFI dependencies
+# libc = "0.2"
+# nix = "0.26"
+# rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-core_affinity = { version = "0.8"}
+# core_affinity = { version = "0.8"}
 futures = { version = "0.3.28" }
 tokio = { version = "1", features = ["full"] }
-memcache = "0.18.0"
-reqwest = { version = "0.12", optional = true }
+memcache = { version = "0.18.0", default-features=false}
+reqwest = { version = "0.12", optional = true, default-features=false, features=["http2", "charset", "rustls-tls"] }
 http = { version = "1.1", optional = true }
 bytes = { version = "1.6", optional = true}
-libloading = { version = "0.8.1" }
+# libloading = { version = "0.8.1" }
 log = "0.4.20"
-env_logger = "0.11.5"
-kvm-bindings = { version = "0.8", optional = true }
-kvm-ioctls = { version = "0.17", optional = true }
-openssl = { version = "0.10", features = ["vendored"] }
-
-# disable benchmarks in library, to not run all unit tests on every benchmark
-# also needs to be disabled for criterion flags to work that are not available for tests
+# env_logger = "0.11.5"
+# kvm-bindings = { version = "0.8", optional = true }
+# kvm-ioctls = { version = "0.17", optional = true }
+# 
+# # disable benchmarks in library, to not run all unit tests on every benchmark
+# # also needs to be disabled for criterion flags to work that are not available for tests
 [lib]
 bench = false
 
-[[bin]]
-name = "mmu_worker"
-required-features = ["mmu"]
-
-[[bench]]
-name = "cheri_benchmark"
-harness = false
-
-[[bench]]
-name = "mmu_benchmark"
-harness = false
+# [[bin]]
+# name = "mmu_worker"
+# required-features = ["mmu"]
+# 
+# [[bench]]
+# name = "cheri_benchmark"
+# harness = false
+# 
+# [[bench]]
+# name = "mmu_benchmark"
+# harness = false

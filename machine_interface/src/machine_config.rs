@@ -25,7 +25,7 @@ pub enum EngineType {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum DomainType {
     System,
-    Mmap,
+    // Mmap,
     #[cfg(feature = "cheri")]
     Cheri,
     #[cfg(feature = "wasm")]
@@ -66,7 +66,7 @@ pub fn get_available_domains(
 ) -> BTreeMap<DomainType, Arc<Box<dyn MemoryDomain>>> {
     let mut default_resources = BTreeMap::from([
         (DomainType::System, MemoryResource::None),
-        (DomainType::Mmap, MemoryResource::Anonymous { size: 0 }),
+        // (DomainType::Mmap, MemoryResource::Anonymous { size: 0 }),
         #[cfg(feature = "cheri")]
         (DomainType::Cheri, MemoryResource::Anonymous { size: 0 }),
         #[cfg(feature = "mmu")]
@@ -93,10 +93,10 @@ pub fn get_available_domains(
                         .unwrap(),
                 ),
             ),
-            DomainType::Mmap => (
-                dom_type,
-                Arc::new(crate::memory_domain::mmap::MmapMemoryDomain::init(resource).unwrap()),
-            ),
+            // DomainType::Mmap => (
+            //     dom_type,
+            //     Arc::new(crate::memory_domain::mmap::MmapMemoryDomain::init(resource).unwrap()),
+            // ),
             #[cfg(feature = "cheri")]
             DomainType::Cheri => (
                 dom_type,

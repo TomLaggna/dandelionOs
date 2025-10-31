@@ -21,10 +21,12 @@ use log::{debug, trace};
 use machine_interface::{
     function_driver::{Driver, FunctionConfig, WorkToDo},
     machine_config::{
-        get_available_domains, get_available_drivers, get_compatibilty_table, DomainType,
-        EngineType,
+        get_available_domains, get_available_drivers, get_compatibilty_table,
+        EngineType, DomainType
     },
-    memory_domain::{Context, MemoryDomain, MemoryResource},
+    memory_domain::{
+        Context, MemoryDomain, 
+        MemoryResource},
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -78,7 +80,7 @@ impl Dispatcher {
             );
         }
         let function_registry = FunctionRegistry::new(registry_drivers, &type_map, &domains);
-
+ 
         return Ok(Dispatcher {
             domains: domain_map,
             engine_queues,
