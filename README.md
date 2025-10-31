@@ -116,29 +116,20 @@ If you use Dandelion, please cite our paper:
 For testing the C code to interact with Cheri we are using unity which is included directly in the project.
 
 # Unikraft (IN PROGRESS)
-To try a Unikraft build of Dandelion, use
-```
-KRAFTKIT_TARGET=dandelion-os cargo +nightly build -Z build-std=std,panic_abort --target x86_64-unikraft-linux-musl --features=mmu,reqwest_io
-```
-You can make sure first that the native build works via 
-```
-cargo build --bin dandelion_server --features=mmu,reqwest_io
-```
-
-## Current state
 Migration to Unikraft is in Progress, only parts of dandelion are included in the build. To make a unikraft build, use
 ```
 KRAFTKIT_TARGET=dandelion-os cargo +nightly build -Z build-std=std,panic_abort --target x86_64-unikraft-linux-musl --bin dandelion_server
 ```
-__note on instability__: 
+## note on build instability 
 - when there are multiple binary targets enabled, kraft seems to have issues with parallelism; you have to run the build command multiple times until it works. To ensure progress, you can pass in `-j 1` to cargo s.t. at least one member is built.
 - incremental builds seem to cause issues. You can keep the target directory to keep the rust part of building. However to update an existing unikraft build, delete the .unikraft directory and the generated .config.dandelion-os_qemu-x86_64 (sometimes you also need to delete the target directory, not sure why)
 
 Run the built image by `kraft run --rm --plat qemu --arch x86_64 -p 3000:3000 .`
 During migration, a webserver is included, try reaching it via `curl localhost:3000`
 
-__multicore__: Currently, multicore __does not work__.
-If you need more than 1 core, you need to run qemu directly instead of kraft run:
+## Multicore
+Currently, multicore __does not work__.
+Still, if you need to start the kernel with more than 1 core available, use:
 ```
 qemu-system-x86_64 \
 -kernel .unikraft/build/dandelion-os_qemu-x86_64 \
@@ -153,7 +144,8 @@ qemu-system-x86_64 \
 
 Use CTRL-a+x to stop.
 
-__debugging__ following the tutorial https://unikraft.org/docs/internals/debugging and slightly adjusting the commands:
+## Debugging
+following the tutorial https://unikraft.org/docs/internals/debugging and slightly adjusting the commands:
 - Run the non-debug built binary directly on qemu/KVM (and freeze startup using -S): `qemu-system-x86_64 -s -S -cpu host -enable-kvm -m 128 -nodefaults -no-acpi -display none -serial stdio -device isa-debug-exit -kernel .unikraft/build/dandelion-os_qemu-x86_64 -device virtio-net-pci,mac=02:b0:b0:d3:d2:01,netdev=hostnet0 -netdev user,id=hostnet0,hostfwd=tcp::3000-:3000`
 - Attach gdb at port 1234 (exposed by -s option in qemu), giving the debug build as a parameter `gdb --eval-command="target remote :1234" .unikraft/build/dandelion-os_qemu-x86_64.dbg`
 - register a hardware breakpoint via e.g.: `hbreak main`
