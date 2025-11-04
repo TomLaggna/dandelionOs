@@ -255,12 +255,11 @@ impl Driver for UnikernelDriver {
     //  and a layout description for it
     fn parse_function(
         &self,
-        function_path: String,
+        function_bin: Arc<[u8]>,
         static_domain: &Box<dyn MemoryDomain>,
     ) -> DandelionResult<Function> {
-        let function = load_u8_from_file(function_path)?;
-        let elf = elf_parser::ParsedElf::new(&function)?;
-        let system_data = elf.get_symbol_by_name(&function, "__dandelion_system_data")?;
+        let elf = elf_parser::ParsedElf::new(&function_bin)?;
+        let system_data = elf.get_symbol_by_name(&function_bin, "__dandelion_system_data")?;
         //let return_offset = elf.get_symbol_by_name(&function, "__dandelion_return_address")?;
         let entry = elf.get_entry_point();
         let config = FunctionConfig::ElfConfig(ElfConfig {
@@ -291,7 +290,7 @@ impl Driver for UnikernelDriver {
         for position in source_layout.iter() {
             context.write(
                 write_counter,
-                &function[position.offset..position.offset + position.size],
+                &function_bin[position.offset..position.offset + position.size],
             )?;
             buffers.push(DataItem {
                 ident: String::from(""),

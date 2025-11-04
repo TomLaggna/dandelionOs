@@ -94,12 +94,12 @@ impl Dispatcher {
         function_name: String,
         engine_type: EngineType,
         ctx_size: usize,
-        path: String,
+        bin: Arc<[u8]>,
         metadata: Metadata,
     ) -> DandelionResult<FunctionId> {
         return self
             .function_registry
-            .insert_function(function_name, engine_type, ctx_size, path, metadata)
+            .insert_function(function_name, engine_type, ctx_size, bin, metadata)
             .await;
     }
 

@@ -85,12 +85,12 @@ async fn run_thread<E: EngineLoop>(core_id: u8, queue: Box<dyn WorkQueue>) {
             }
             WorkToDo::ParsingArguments {
                 driver,
-                path,
+                bin,
                 static_domain,
                 mut recorder,
             } => {
                 recorder.record(RecordPoint::ParsingStart);
-                let function_result = driver.parse_function(path, &static_domain);
+                let function_result = driver.parse_function(bin, &static_domain);
                 recorder.record(RecordPoint::ParsingEnd);
                 drop(recorder);
                 match function_result {

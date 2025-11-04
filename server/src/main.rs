@@ -3,14 +3,14 @@ use dandelion_commons::{
     records::{Archive, Recorder},
     DandelionResult,
 };
-// use dandelion_server::DandelionBody;
+use dandelion_server::DandelionBody;
 use dispatcher::{
     composition::CompositionSet,
     dispatcher::{Dispatcher, DispatcherInput},
     function_registry::Metadata,
     resource_pool::ResourcePool,
 };
-// use http_body_util::BodyExt;
+use http_body_util::BodyExt;
 use hyper::{
     body::{Body, Incoming},
     service::service_fn,
@@ -19,24 +19,23 @@ use hyper::{
 use log::{debug, error, info, trace, warn};
 use machine_interface::{
     function_driver::ComputeResource,
-    machine_config::{DomainType},
-    memory_domain::{MemoryResource},
+    machine_config::{DomainType, EngineType},
+    memory_domain::{bytes_context::BytesContext, read_only::ReadOnlyContext, MemoryResource},
+    DataItem, DataSet, Position,
 };
-use machine_interface::{
-    // function_driver::ComputeResource,
-    machine_config::{
-        // DomainType, 
-        EngineType
-    },
-    // memory_domain::{bytes_context::BytesContext, read_only::ReadOnlyContext, MemoryResource},
-    // DataItem, DataSet, Position,
-};
-// use serde::Deserialize;
+use serde::Deserialize;
 use std::{
-    collections::BTreeMap, convert::Infallible, fs::read_to_string, io::Write, net::SocketAddr, path::PathBuf, string, sync::{
+    collections::BTreeMap,
+    convert::Infallible,
+    fs::read_to_string,
+    io::Write,
+    net::SocketAddr,
+    path::PathBuf,
+    sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, OnceLock,
-    }, time::Instant
+    },
+    time::Instant,
 };
 use tokio::{
     net::TcpListener,
@@ -47,7 +46,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 
-// const FUNCTION_FOLDER_PATH: &str = "/tmp/dandelion_server";
+const FUNCTION_FOLDER_PATH: &str = "/functions";
 
 enum DispatcherCommand {
     FunctionRequest {
@@ -61,7 +60,7 @@ enum DispatcherCommand {
         name: String,
         engine_type: EngineType,
         context_size: usize,
-        path: String,
+        bin: Arc<[u8]>,
         metadata: Metadata,
         callback: oneshot::Sender<DandelionResult<u64>>,
     },
@@ -149,135 +148,172 @@ enum DispatcherCommand {
 //     return response;
 // }
 
-// fn default_path() -> String {
-//     String::new()
-// }
+fn default_path() -> String {
+    String::new()
+}
 
-// /// Struct containing registration information for new function
-// #[derive(Debug, Deserialize)]
-// struct RegisterFunction {
-//     /// String name of the function
-//     name: String,
-//     /// Default size for context to allocate to execute function
-//     context_size: u64,
-//     /// Which engine the function should be executed on
-//     engine_type: String,
-//     /// Optional local path to the binary if it is already on local disc
-//     #[serde(default = "default_path")]
-//     local_path: String,
-//     /// Binary representation of the function, ignored if a local path is given
-//     binary: Vec<u8>,
-//     /// Metadata for the sets and optionally static items to pass into the function for that set
-//     input_sets: Vec<(String, Option<Vec<(String, Vec<u8>)>>)>,
-//     /// output set names
-//     output_sets: Vec<String>,
-// }
+/// Struct containing registration information for new function
+#[derive(Debug, Deserialize)]
+struct RegisterFunction {
+    /// String name of the function
+    name: String,
+    /// Default size for context to allocate to execute function
+    context_size: u64,
+    /// Which engine the function should be executed on
+    engine_type: String,
+    /// Optional local path to the binary if it is already on local disc
+    #[serde(default = "default_path")]
+    local_path: String,
+    /// Binary representation of the function, ignored if a local path is given
+    binary: Vec<u8>,
+    /// Metadata for the sets and optionally static items to pass into the function for that set
+    input_sets: Vec<(String, Option<Vec<(String, Vec<u8>)>>)>,
+    /// output set names
+    output_sets: Vec<String>,
+}
 
-// async fn register_function(
-//     req: Request<Incoming>,
-//     dispatcher: mpsc::Sender<DispatcherCommand>,
-// ) -> Result<Response<DandelionBody>, Infallible> {
-//     let bytes = req
-//         .collect()
-//         .await
-//         .expect("Failed to extract body from function registration")
-//         .to_bytes();
-//     // find first line end character
-//     let request_map: RegisterFunction =
-//         bson::from_slice(&bytes).expect("Should be able to deserialize request");
-//     // if local is present ignore the binary
-//     let path_string = if !request_map.local_path.is_empty() {
-//         // check that file exists
-//         if let Err(err) = std::fs::File::open(&request_map.local_path) {
-//             let err_message = format!(
-//                 "Tried to register function with local path, but failed to open file with error {}",
-//                 err
-//             );
-//             return Ok::<_, Infallible>(Response::new(DandelionBody::from_vec(
-//                 err_message.as_bytes().to_vec(),
-//             )));
-//         };
-//         request_map.local_path
-//     } else {
-//         // write function to file
-//         std::fs::create_dir_all(FUNCTION_FOLDER_PATH).unwrap();
-//         let mut path_buff = PathBuf::from(FUNCTION_FOLDER_PATH);
-//         path_buff.push(request_map.name.clone());
-//         let mut function_file = std::fs::File::create(path_buff.clone())
-//             .expect("Failed to create file for registering function");
-//         function_file
-//             .write_all(&request_map.binary)
-//             .expect("Failed to write file with content for registering");
-//         path_buff.to_str().unwrap().to_string()
-//     };
+async fn register_function(
+    req: Request<Incoming>,
+    dispatcher: mpsc::Sender<DispatcherCommand>,
+) -> Result<Response<DandelionBody>, Infallible> {
+    let bytes = req
+        .collect()
+        .await
+        .expect("Failed to extract body from function registration")
+        .to_bytes();
+    // find first line end character
+    let request_map: RegisterFunction =
+        bson::from_slice(&bytes).expect("Should be able to deserialize request");
+    // // if local is present ignore the binary
+    // let path_string = if !request_map.local_path.is_empty() {
+    //     // check that file exists
+    //     if let Err(err) = std::fs::File::open(&request_map.local_path) {
+    //         let err_message = format!(
+    //             "Tried to register function with local path, but failed to open file with error {}",
+    //             err
+    //         );
+    //         return Ok::<_, Infallible>(Response::new(DandelionBody::from_vec(
+    //             err_message.as_bytes().to_vec(),
+    //         )));
+    //     };
+    //     request_map.local_path
+    // } else {
+    //     // write function to file
+    //     std::fs::create_dir_all(FUNCTION_FOLDER_PATH).unwrap();
+    //     let mut path_buff = PathBuf::from(FUNCTION_FOLDER_PATH);
+    //     path_buff.push(request_map.name.clone());
+    //     let mut function_file = std::fs::File::create(path_buff.clone())
+    //         .expect("Failed to create file for registering function");
+    //     function_file
+    //         .write_all(&request_map.binary)
+    //         .expect("Failed to write file with content for registering");
+    //     path_buff.to_str().unwrap().to_string()
+    // };
 
-//     let engine_type = match request_map.engine_type.as_str() {
-//         #[cfg(feature = "wasm")]
-//         "RWasm" => EngineType::RWasm,
-//         #[cfg(feature = "mmu")]
-//         "Process" => EngineType::Process,
-//         #[cfg(feature = "kvm")]
-//         "Kvm" => EngineType::Kvm,
-//         #[cfg(feature = "cheri")]
-//         "Cheri" => EngineType::Cheri,
-//         unkown => panic!("Unkown engine type string {}", unkown),
-//     };
-//     let input_sets = request_map
-//         .input_sets
-//         .into_iter()
-//         .map(|(name, data)| {
-//             if let Some(static_data) = data {
-//                 let data_contexts = static_data
-//                     .into_iter()
-//                     .map(|(item_name, data_vec)| {
-//                         let item_size = data_vec.len();
-//                         let mut new_context =
-//                             ReadOnlyContext::new(data_vec.into_boxed_slice()).unwrap();
-//                         new_context.content.push(Some(DataSet {
-//                             ident: name.clone(),
-//                             buffers: vec![DataItem {
-//                                 ident: item_name,
-//                                 data: Position {
-//                                     offset: 0,
-//                                     size: item_size,
-//                                 },
-//                                 key: 0,
-//                             }],
-//                         }));
-//                         Arc::new(new_context)
-//                     })
-//                     .collect();
-//                 let composition_set = CompositionSet::from((0, data_contexts));
-//                 (name, Some(composition_set))
-//             } else {
-//                 (name, None)
-//             }
-//         })
-//         .collect();
-//     let (callback, confirmation) = oneshot::channel();
-//     let metadata = Metadata {
-//         input_sets: Arc::new(input_sets),
-//         output_sets: Arc::new(request_map.output_sets),
-//     };
-//     dispatcher
-//         .send(DispatcherCommand::FunctionRegistration {
-//             name: request_map.name,
-//             engine_type,
-//             context_size: request_map.context_size as usize,
-//             path: path_string,
-//             metadata,
-//             callback,
-//         })
-//         .await
-//         .unwrap();
-//     confirmation
-//         .await
-//         .unwrap()
-//         .expect("Should be able to insert function");
-//     return Ok::<_, Infallible>(Response::new(DandelionBody::from_vec(
-//         "Function registered".as_bytes().to_vec(),
-//     )));
-// }
+    // let engine_type = match request_map.engine_type.as_str() {
+    //     #[cfg(feature = "wasm")]
+    //     "RWasm" => EngineType::RWasm,
+    //     #[cfg(feature = "mmu")]
+    //     "Process" => EngineType::Process,
+    //     #[cfg(feature = "kvm")]
+    //     "Kvm" => EngineType::Kvm,
+    //     #[cfg(feature = "cheri")]
+    //     "Cheri" => EngineType::Cheri,
+    //     #[cfg(feature = "unikernel")]
+    //     "Unikernel" => EngineType::Unikernel,
+    //     unkown => panic!("Unkown engine type string {}", unkown),
+    // };
+    // let input_sets = request_map
+    //     .input_sets
+    //     .into_iter()
+    //     .map(|(name, data)| {
+    //         if let Some(static_data) = data {
+    //             let data_contexts = static_data
+    //                 .into_iter()
+    //                 .map(|(item_name, data_vec)| {
+    //                     let item_size = data_vec.len();
+    //                     let mut new_context =
+    //                         ReadOnlyContext::new(data_vec.into_boxed_slice()).unwrap();
+    //                     new_context.content.push(Some(DataSet {
+    //                         ident: name.clone(),
+    //                         buffers: vec![DataItem {
+    //                             ident: item_name,
+    //                             data: Position {
+    //                                 offset: 0,
+    //                                 size: item_size,
+    //                             },
+    //                             key: 0,
+    //                         }],
+    //                     }));
+    //                     Arc::new(new_context)
+    //                 })
+    //                 .collect();
+    //             let composition_set = CompositionSet::from((0, data_contexts));
+    //             (name, Some(composition_set))
+    //         } else {
+    //             (name, None)
+    //         }
+    //     })
+    //     .collect();
+    // let (callback, confirmation) = oneshot::channel();
+    // let metadata = Metadata {
+    //     input_sets: Arc::new(input_sets),
+    //     output_sets: Arc::new(request_map.output_sets),
+    // };
+    // dispatcher
+    //     .send(DispatcherCommand::FunctionRegistration {
+    //         name: request_map.name,
+    //         engine_type,
+    //         context_size: request_map.context_size as usize,
+    //         path: path_string,
+    //         metadata,
+    //         callback,
+    //     })
+    //     .await
+    //     .unwrap();
+
+    
+    // let paths = std::fs::read_dir("/").unwrap();
+
+    // for path in paths {
+    //     println!("Name: {}", path.unwrap().path().display())
+    // }
+
+    // // write function to file
+    // std::fs::create_dir_all(FUNCTION_FOLDER_PATH).unwrap();
+    // let mut path_buff = PathBuf::from(FUNCTION_FOLDER_PATH);
+    // path_buff.push(request_map.name.clone());
+    // let mut function_file = std::fs::File::create(path_buff.clone())
+    //     .expect("Failed to create file for registering function");
+    // function_file
+    //     .write_all(&request_map.binary)
+    //     .expect("Failed to write file with content for registering");
+    // path_buff.to_str().unwrap().to_string()
+
+    let (callback, confirmation) = oneshot::channel();
+    let metadata = Metadata {
+        input_sets: Arc::new(Vec::new()),
+        output_sets: Arc::new(Vec::new()),
+    };
+    dispatcher
+        .send(DispatcherCommand::FunctionRegistration {
+            name: "basic".to_string(),
+            engine_type: EngineType::Unikernel,
+            context_size: 1 as usize,
+            bin: Arc::from(request_map.binary),
+            metadata,
+            callback,
+        })
+        .await
+        .unwrap();
+    confirmation
+        .await
+        .unwrap()
+        .expect("Should be able to insert function");
+    return Ok::<_, Infallible>(Response::new(DandelionBody::from_vec(
+        "Function registered".as_bytes().to_vec(),
+    )));
+}
 
 // #[derive(Debug, Deserialize)]
 // struct RegisterChain {
@@ -358,12 +394,12 @@ async fn dispatcher_loop(
                 engine_type,
                 context_size,
                 metadata,
+                bin,
                 mut callback,
-                path,
             } => {
                 debug!("Handling function registration");
                 let insertion_future =
-                    dispatcher.insert_func(name, engine_type, context_size, path, metadata);
+                    dispatcher.insert_func(name, engine_type, context_size, bin, metadata);
                 spawn(async {
                     select! {
                         result = insertion_future => {
@@ -427,11 +463,11 @@ async fn service_loop(request_sender: mpsc::Sender<DispatcherCommand>, port: u16
 async fn service(
     req: Request<Incoming>,
     dispatcher: mpsc::Sender<DispatcherCommand>,
-) -> Result<Response<String>, Infallible> {
+) -> Result<Response<DandelionBody>, Infallible> {
     let uri = req.uri().path();
     match uri {
         // TODO rename to cold func and hot func, remove matmul, compute, io
-        // "/register/function" => register_function(req, dispatcher).await,
+        "/register/function" => register_function(req, dispatcher).await,
         // "/register/composition" => register_composition(req, dispatcher).await,
         // "/cold/matmul"
         // | "/cold/matmulstore"
@@ -452,7 +488,9 @@ async fn service(
         // "/stats" => serve_stats(req).await,
         other_uri => {
             trace!("Received request on {}", other_uri);
-            Ok::<_, Infallible>(Response::new("Hello World!".to_string()))
+            Ok::<_, Infallible>(Response::new(DandelionBody::from_vec(
+                format!("Hello, World\n").into_bytes(),
+            )))
         }
     }
 }

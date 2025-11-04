@@ -6,7 +6,7 @@ pub const DEFAULT_ALIGNMENT: usize = 4096;
 
 macro_rules! parser_code {
     ($name: ident; $in_type: ty; $out_type: ty; $parser: ident; $increment: literal) => {
-        fn $name(slice: &Vec<u8>, counter: &mut usize) -> $out_type {
+        fn $name(slice: &[u8], counter: &mut usize) -> $out_type {
             let mut subslice: [u8; $increment] = [0; $increment];
             subslice.copy_from_slice(&slice[*counter..*counter + $increment]);
             let val = <$in_type>::$parser(subslice);
@@ -26,9 +26,9 @@ parser_code!(parse_offset_le_64; u64; u64; from_le_bytes; 8);
 parser_code!(parse_offset_be_64; u64; u64; from_be_bytes; 8);
 
 struct ParserFuncs {
-    parse_half: fn(&Vec<u8>, &mut usize) -> u16,
-    parse_word: fn(&Vec<u8>, &mut usize) -> u32,
-    parse_offset: fn(&Vec<u8>, &mut usize) -> u64,
+    parse_half: fn(&[u8], &mut usize) -> u16,
+    parse_word: fn(&[u8], &mut usize) -> u32,
+    parse_offset: fn(&[u8], &mut usize) -> u64,
 }
 
 struct ElfEhdr {
@@ -47,7 +47,7 @@ struct ElfEhdr {
     e_shstrndx: u16,
 }
 
-fn parse_ehdr(file: &Vec<u8>, pf: &ParserFuncs) -> ElfEhdr {
+fn parse_ehdr(file: &[u8], pf: &ParserFuncs) -> ElfEhdr {
     let mut counter = 0x10;
     ElfEhdr {
         _e_type: (pf.parse_half)(file, &mut counter),
@@ -78,7 +78,7 @@ struct ElfPhdr {
 }
 
 fn parse_phdr_table(
-    file: &Vec<u8>,
+    file: &[u8],
     pf: &ParserFuncs,
     ehdr: &ElfEhdr,
     is_32_bit: bool,
@@ -131,7 +131,7 @@ struct ElfShdr {
 }
 
 fn parse_shrd_table(
-    file: &Vec<u8>,
+    file: &[u8],
     pf: &ParserFuncs,
     ehdr: &ElfEhdr,
 ) -> DandelionResult<Vec<ElfShdr>> {
@@ -169,7 +169,7 @@ struct ElfSym {
 }
 
 fn parse_symbol_table(
-    file: &Vec<u8>,
+    file: &[u8],
     pf: &ParserFuncs,
     shdr_table: &Vec<ElfShdr>,
     is_32_bit: bool,
@@ -234,7 +234,7 @@ const SHT_SYMTAB: u32 = 0x2;
 const SHT_STRTAB: u32 = 0x3;
 
 impl ParsedElf {
-    pub fn new(file: &Vec<u8>) -> DandelionResult<Self> {
+    pub fn new(file: &[u8]) -> DandelionResult<Self> {
         if file.len() < 6 {
             return Err(DandelionError::MalformedConfig);
         }
@@ -275,7 +275,7 @@ impl ParsedElf {
         }
         let phdr_table = parse_phdr_table(&file, &pf, &ehdr, is_32_bit)?;
         let shdr_table = parse_shrd_table(&file, &pf, &ehdr)?;
-        let sym_table = parse_symbol_table(file, &pf, &shdr_table, is_32_bit)?;
+        let sym_table = parse_symbol_table(&file, &pf, &shdr_table, is_32_bit)?;
         return Ok(ParsedElf {
             ehdr: ehdr,
             program_header_table: phdr_table,
@@ -329,11 +329,7 @@ impl ParsedElf {
         protection_requirement
     }
 
-    pub fn get_symbol_by_name(
-        &self,
-        file: &Vec<u8>,
-        name: &str,
-    ) -> DandelionResult<(usize, usize)> {
+    pub fn get_symbol_by_name(&self, file: &[u8], name: &str) -> DandelionResult<(usize, usize)> {
         // find section header string table
         let section_name_entry = &self.section_header_table[self.ehdr.e_shstrndx as usize];
         let section_names_start = section_name_entry.sh_offset as usize;

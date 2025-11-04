@@ -88,14 +88,14 @@ async fn load_local(
     driver: &'static dyn Driver,
     mut recorder: Recorder,
     work_queue: Box<EngineQueue>,
-    path: String,
+    bin: Arc<[u8]>,
 ) -> DandelionResult<Arc<Function>> {
     recorder.record(RecordPoint::ParsingQueue);
     let function = work_queue
         .enqueu_work(
             machine_interface::function_driver::WorkToDo::ParsingArguments {
                 driver,
-                path,
+                bin,
                 static_domain,
                 recorder: recorder.get_sub_recorder(),
             },
@@ -120,7 +120,7 @@ pub struct FunctionRegistry {
         BTreeMap<
             (FunctionId, EngineType),
             (
-                String,
+                Arc<[u8]>,
                 Option<
                     futures::future::Shared<
                         Pin<Box<dyn Future<Output = DandelionResult<Arc<Function>>> + Send>>,
@@ -174,7 +174,7 @@ impl FunctionRegistry {
                 // get the config from the parser
                 let function_config = driver
                     .parse_function(
-                        String::from(""),
+                        Arc::new([]),
                         domains.get(type_map.get(engine_type).unwrap()).unwrap(),
                     )
                     .unwrap();
@@ -185,7 +185,7 @@ impl FunctionRegistry {
                 loadable.insert(
                     (function_id, *engine_type),
                     (
-                        String::new(),
+                        Arc::from([]),
                         Some(
                             (Box::pin(futures::future::ready(Ok(Arc::new(function_config))))
                                 as Pin<Box<dyn Future<Output = DandelionResult<_>> + Send>>)
@@ -246,7 +246,7 @@ impl FunctionRegistry {
         function_name: String,
         engine_id: EngineType,
         ctx_size: usize,
-        path: String,
+        bin: Arc<[u8]>,
         metadata: Metadata,
     ) -> DandelionResult<FunctionId> {
         // check if function is already present, get ID if not
@@ -261,7 +261,7 @@ impl FunctionRegistry {
             function_id = dict_lock.insert_or_lookup(function_name);
         }
         self.metadata.lock().await.insert(function_id, metadata);
-        self.add_local(function_id, engine_id, ctx_size, path)
+        self.add_local(function_id, engine_id, ctx_size, bin)
             .await?;
         return Ok(function_id);
     }
@@ -321,7 +321,7 @@ impl FunctionRegistry {
         function_id: FunctionId,
         engine_id: EngineType,
         ctx_size: usize,
-        path: String,
+        bin: Arc<[u8]>,
     ) -> DandelionResult<()> {
         if !self.metadata.lock().await.contains_key(&function_id) {
             return Err(DandelionError::Dispatcher(
@@ -331,7 +331,7 @@ impl FunctionRegistry {
         self.loadable
             .lock()
             .await
-            .insert((function_id, engine_id), (path, None));
+            .insert((function_id, engine_id), (bin, None));
         self.engine_map
             .lock()
             .await
@@ -381,7 +381,7 @@ impl FunctionRegistry {
         // if it is cached insert a shared future
         let mut lock_guard = self.loadable.lock().await;
         let function_future =
-            if let Some((path, future_option)) = lock_guard.get_mut(&(function_id, engine_id)) {
+            if let Some((bin, future_option)) = lock_guard.get_mut(&(function_id, engine_id)) {
                 if let Some(func_future) = future_option {
                     func_future.clone()
                 } else {
@@ -390,7 +390,7 @@ impl FunctionRegistry {
                         *driver,
                         recorder.get_sub_recorder(),
                         load_queue.clone(),
-                        path.clone(),
+                        bin.clone(),
                     ))
                         as Pin<Box<dyn Future<Output = DandelionResult<_>> + Send>>)
                         .shared();

@@ -116,7 +116,7 @@ pub enum WorkToDo {
     },
     ParsingArguments {
         driver: &'static dyn Driver,
-        path: String,
+        bin: Arc<[u8]>,
         static_domain: Arc<Box<dyn MemoryDomain>>,
         recorder: Recorder,
     },
@@ -188,7 +188,7 @@ pub trait Driver: Send + Sync {
     //  and a layout description for it
     fn parse_function(
         &self,
-        function_path: String,
+        function_bin: Arc<[u8]>,
         static_domain: &Box<dyn MemoryDomain>,
     ) -> DandelionResult<Function>;
 }

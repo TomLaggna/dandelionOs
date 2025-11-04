@@ -751,12 +751,12 @@ async fn engine_loop(queue: Box<dyn WorkQueue + Send>) -> Debt {
             }
             WorkToDo::ParsingArguments {
                 driver,
-                path,
+                bin,
                 static_domain,
                 mut recorder,
             } => {
                 recorder.record(RecordPoint::ParsingStart);
-                let function_result = driver.parse_function(path, &static_domain);
+                let function_result = driver.parse_function(bin, &static_domain);
                 recorder.record(RecordPoint::ParsingEnd);
                 drop(recorder);
                 match function_result {
@@ -846,10 +846,10 @@ impl Driver for ReqwestDriver {
 
     fn parse_function(
         &self,
-        function_path: String,
+        function_bin: Arc<[u8]>,
         static_domain: &Box<dyn crate::memory_domain::MemoryDomain>,
     ) -> DandelionResult<Function> {
-        if function_path.len() != 0 {
+        if function_bin.len() != 0 {
             return Err(DandelionError::CalledSystemFuncParser);
         }
         return Ok(Function {
