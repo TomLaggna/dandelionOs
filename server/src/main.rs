@@ -272,7 +272,6 @@ async fn register_function(
     //     .await
     //     .unwrap();
 
-    
     // let paths = std::fs::read_dir("/").unwrap();
 
     // for path in paths {
@@ -443,6 +442,7 @@ async fn service_loop(request_sender: mpsc::Sender<DispatcherCommand>, port: u16
                 let io = hyper_util::rt::TokioIo::new(stream);
                 tokio::task::spawn(async move {
                     let service_dispatcher_ptr = loop_dispatcher.clone();
+                    // TODO the following line seems to cause a kernel crash; why?
                     if let Err(err) = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
                         .serve_connection_with_upgrades(
                             io,
@@ -525,11 +525,13 @@ async fn main() {
         );
     }
 
-    info!("Detected cores: {} logical and {} physical",
-            num_virt_cores, num_phyiscal_cores);
+    info!(
+        "Detected cores: {} logical and {} physical",
+        num_virt_cores, num_phyiscal_cores
+    );
 
     let resource_conversion = |core_index| ComputeResource::CPU(core_index);
-    
+
     let dispatcher_cores = config.get_dispatcher_cores();
     let frontend_cores = config.get_frontend_cores();
     let communication_cores: Vec<_> = config
@@ -591,7 +593,13 @@ async fn main() {
     let engine_type = EngineType::Cheri;
     #[cfg(feature = "unikernel")]
     let engine_type = EngineType::Unikernel;
-    #[cfg(any(feature = "cheri", feature = "wasm", feature = "mmu", feature = "kvm", feature = "unikernel"))]
+    #[cfg(any(
+        feature = "cheri",
+        feature = "wasm",
+        feature = "mmu",
+        feature = "kvm",
+        feature = "unikernel"
+    ))]
     pool_map.insert(engine_type, compute_cores);
     #[cfg(feature = "reqwest_io")]
     pool_map.insert(EngineType::Reqwest, communication_cores);

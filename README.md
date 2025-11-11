@@ -124,8 +124,8 @@ KRAFTKIT_TARGET=dandelion-os cargo +nightly build -Z build-std=std,panic_abort -
 - when there are multiple binary targets enabled, kraft seems to have issues with parallelism; you have to run the build command multiple times until it works. To ensure progress, you can pass in `-j 1` to cargo s.t. at least one member is built.
 - incremental builds seem to cause issues. You can keep the target directory to keep the rust part of building. However to update an existing unikraft build, delete the .unikraft directory and the generated .config.dandelion-os_qemu-x86_64 (sometimes you also need to delete the target directory, not sure why)
 
-Run the built image by `kraft run --rm --plat qemu --arch x86_64 -p 3000:3000 .`
-During migration, a webserver is included, try reaching it via `curl localhost:3000`
+Run the built image by `kraft run --rm --plat qemu --arch x86_64 -p 8080:8080 .`
+During migration, a webserver is included, try reaching it via `curl localhost:8080`
 
 ## Multicore
 Currently, multicore __does not work__.
@@ -136,7 +136,7 @@ qemu-system-x86_64 \
 -nographic \
 -m 128M \
 -device virtio-net-pci,mac=02:b0:b0:d3:d2:01,netdev=hostnet0 \
--netdev user,id=hostnet0,hostfwd=tcp::3000-:3000 \
+-netdev user,id=hostnet0,hostfwd=tcp::8080-:8080 \
 --enable-kvm \
 -cpu max \
 -smp cores=3
@@ -146,7 +146,7 @@ Use CTRL-a+x to stop.
 
 ## Debugging
 following the tutorial https://unikraft.org/docs/internals/debugging and slightly adjusting the commands:
-- Run the non-debug built binary directly on qemu/KVM (and freeze startup using -S): `qemu-system-x86_64 -s -S -cpu host -enable-kvm -m 128 -nodefaults -no-acpi -display none -serial stdio -device isa-debug-exit -kernel .unikraft/build/dandelion-os_qemu-x86_64 -device virtio-net-pci,mac=02:b0:b0:d3:d2:01,netdev=hostnet0 -netdev user,id=hostnet0,hostfwd=tcp::3000-:3000`
+- Run the non-debug built binary directly on qemu/KVM (and freeze startup using -S): `qemu-system-x86_64 -s -S -cpu host -enable-kvm -m 128 -nodefaults -no-acpi -display none -serial stdio -device isa-debug-exit -kernel .unikraft/build/dandelion-os_qemu-x86_64 -device virtio-net-pci,mac=02:b0:b0:d3:d2:01,netdev=hostnet0 -netdev user,id=hostnet0,hostfwd=tcp::8080-:8080`
 - Attach gdb at port 1234 (exposed by -s option in qemu), giving the debug build as a parameter `gdb --eval-command="target remote :1234" .unikraft/build/dandelion-os_qemu-x86_64.dbg`
 - register a hardware breakpoint via e.g.: `hbreak main`
 - starting from there you can work with normal breakpoints and default gdb utilities
