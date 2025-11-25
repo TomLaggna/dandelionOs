@@ -2,26 +2,8 @@ spec: v0.6
 
 name: dandelion-os
 
-unikraft:
-  version: stable
-  kconfig:
-    CONFIG_LIBPOSIX_EVENTFD: 'y'
-    CONFIG_LIBPOSIX_UNIXSOCKET: 'y'
-    CONFIG_LIBUKNETDEV_EINFO_LIBPARAM: 'y'
-    CONFIG_LIBUKRANDOM_GETRANDOM: 'y'
+runtime: base:latest
 
-libraries:
-  musl: stable
-  lwip:
-    version: stable
-    kconfig:
-      CONFIG_LWIP_UKNETDEV: 'y'
-      CONFIG_LWIP_TCP: 'y'
-      CONFIG_LWIP_THREADS: 'y'
-      CONFIG_LWIP_SOCKET: 'y'
-      CONFIG_LWIP_DHCP: 'y'
-      CONFIG_LWIP_IPV4: 'y'
-      CONFIG_LWIP_AUTOIFACE: 'y'
+rootfs: ./Dockerfile
 
-targets:
-- qemu/x86_64
+cmd: ["/testa"]

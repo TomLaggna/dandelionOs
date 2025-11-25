@@ -151,3 +151,15 @@ following the tutorial https://unikraft.org/docs/internals/debugging and slightl
 - register a hardware breakpoint via e.g.: `hbreak main`
 - starting from there you can work with normal breakpoints and default gdb utilities
 - (the linked tutorial mentions setting the gdb target architecture which is not strictly required in my experience)
+
+## using unikraft runtime
+When using the runtime instead of the native build, make sure a buildkit docker container is set up, running and reachable by kraft. This will ensure fast build times via caching.
+https://unikraft.org/guides/building-dockerfile-images-with-buildkit
+- initially: ``docker run -d --name buildkitd --privileged moby/buildkit:latest``
+- when already setup but stopped: ``docker start buildkitd``
+- confirm it worked: ``docker container ps | grep buildkit``
+- tell kraft where to find the buildkit container: ``export KRAFTKIT_BUILDKIT_HOST=docker-container://buildkitd``
+- debugging the docker build
+  - output .cpio is located in .unikraft/build/initramfs-x86_64.cpio; can be inspected with the cpio utility `cpio -itv < initramfs-x86_64.cpio`
+  - generate the Dockerfile output via `docker build . -o type=local,dest=out`
+- run via kraft __GIVE MORE MEMORY__ otherwise there will be a obscure cpio loading error: `kraft run --rm -p 8080:8080 --plat qemu --arch x86_64 -M 1G .`
