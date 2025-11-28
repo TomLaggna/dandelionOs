@@ -158,7 +158,7 @@ mod server_tests {
             engine_type = String::from("Unikernel");
         }
         let matmul_path = format!(
-            "{}/../machine_interface/tests/data/test_{}_basic",
+            "{}/../machine_interface/tests/data/test_{}_matmul",
             env!("CARGO_MANIFEST_DIR"),
             version,
         );
@@ -203,35 +203,35 @@ mod server_tests {
             .unwrap();
         assert!(registration_resp.status().is_success());
 
-        // let chain_name = format!("chain_{}", version_string);
-        // let chain_request = RegisterChain {
-        //     composition: format!(
-        //         r#"
-        //         function {function} (InMats) => (OutMats);
-        //         composition {chain} (CompInMats) => (CompOutMats) {{
-        //             {function} (InMats = all CompInMats) => (InterMat = OutMats);
-        //             {function} (InMats = all InterMat) => (CompOutMats = OutMats);
-        //         }}
-        //     "#,
-        //         function = function_name,
-        //         chain = chain_name,
-        //     ),
-        // };
+        let chain_name = format!("chain_{}", version_string);
+        let chain_request = RegisterChain {
+            composition: format!(
+                r#"
+                function {function} (InMats) => (OutMats);
+                composition {chain} (CompInMats) => (CompOutMats) {{
+                    {function} (InMats = all CompInMats) => (InterMat = OutMats);
+                    {function} (InMats = all InterMat) => (CompOutMats = OutMats);
+                }}
+            "#,
+                function = function_name,
+                chain = chain_name,
+            ),
+        };
 
-        // let chain_resp = client
-        //     .post("http://localhost:8080/register/composition")
-        //     .version(http_version)
-        //     .body(bson::to_vec(&chain_request).unwrap())
-        //     .send()
-        //     .unwrap();
-        // assert!(chain_resp.status().is_success());
+        let chain_resp = client
+            .post("http://localhost:8080/register/composition")
+            .version(http_version)
+            .body(bson::to_vec(&chain_request).unwrap())
+            .send()
+            .unwrap();
+        assert!(chain_resp.status().is_success());
 
-        // send_matrix_request(
-        //     "http://localhost:8080/hot/matmul",
-        //     function_name,
-        //     http_version,
-        //     client.clone(),
-        // );
+        send_matrix_request(
+            "http://localhost:8080/hot/matmul",
+            function_name,
+            http_version,
+            client.clone(),
+        );
         // send_matrix_request(
         //     "http://localhost:8080/hot/matmul",
         //     chain_name,

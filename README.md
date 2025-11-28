@@ -163,3 +163,4 @@ https://unikraft.org/guides/building-dockerfile-images-with-buildkit
   - output .cpio is located in .unikraft/build/initramfs-x86_64.cpio; can be inspected with the cpio utility `cpio -itv < initramfs-x86_64.cpio`
   - generate the Dockerfile output via `docker build . -o type=local,dest=out`
 - run via kraft __GIVE MORE MEMORY__ otherwise there will be a obscure cpio loading error: `kraft run --rm -p 8080:8080 --plat qemu --arch x86_64 -M 1G .`
+- __BE CAREFUL ABOUT CACHED BUILDS__ buildkit seems to utilize the local target directory to some degree in order to accelerate the cargo build command in the dockerfile; to see changes, you might have to cargo build outside of the Dockerfile
