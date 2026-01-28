@@ -164,3 +164,21 @@ https://unikraft.org/guides/building-dockerfile-images-with-buildkit
   - generate the Dockerfile output via `docker build . -o type=local,dest=out`
 - run via kraft __GIVE MORE MEMORY__ otherwise there will be a obscure cpio loading error: `kraft run --rm -p 8080:8080 --plat qemu --arch x86_64 -M 1G .`
 - __BE CAREFUL ABOUT CACHED BUILDS__ buildkit seems to utilize the local target directory to some degree in order to accelerate the cargo build command in the dockerfile; to see changes, you might have to cargo build outside of the Dockerfile
+- the build now only generates the .cpio file, to start with multiple cores, locate the runtime base:latest binary and assemble a custom qemu command:
+- do `kraft build --plat qemu --arch x86_64`
+- run the qemu command (ctrl-a x to stop?) 
+- find running qemus by ``ps -ef | grep qemu-system-x86_64``
+```
+qemu-system-x86_64 \
+  -kernel EXTRACTED_BASE_LATEST_BINARIES/kernel \
+  -initrd .unikraft/build/initramfs-x86_64.cpio \
+  -machine pc,accel=kvm \
+  -cpu host,+x2apic,-pmu \
+  -m 953M \
+  -smp cpus=3 \
+  -device virtio-net-pci,mac=02:b0:b0:d3:d2:01,netdev=hostnet0 \
+  -netdev user,id=hostnet0,hostfwd=tcp::8080-:8080 \
+  -nographic -no-reboot -parallel none \
+  -rtc base=utc \
+  -append 'vfs.fstab=[ "initrd0:/:extract:::" ] env.vars=[ "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" ] -- /dandelionOs'
+```

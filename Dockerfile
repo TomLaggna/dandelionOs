@@ -16,7 +16,7 @@ COPY ./target/debug/dandelion_server /src/target/debug/dandelion_server
 
 FROM scratch
 
-COPY --from=build /src/target/debug/dandelion_server /testa
+COPY --from=build /src/target/debug/dandelion_server /dandelionOs
 COPY --from=build /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libc.so.6
 COPY --from=build /lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/libm.so.6
 COPY --from=build /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/libgcc_s.so.1

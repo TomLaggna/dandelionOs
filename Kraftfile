@@ -6,4 +6,4 @@ runtime: base:latest
 
 rootfs: ./Dockerfile
 
-cmd: ["/testa"]
+cmd: ["/dandelionOs"]
