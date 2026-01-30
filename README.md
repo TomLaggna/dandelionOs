@@ -174,8 +174,8 @@ qemu-system-x86_64 \
   -initrd .unikraft/build/initramfs-x86_64.cpio \
   -machine pc,accel=kvm \
   -cpu host,+x2apic,-pmu \
-  -m 953M \
-  -smp cpus=3 \
+  -m 1G \
+  -smp cpus=2 \
   -device virtio-net-pci,mac=02:b0:b0:d3:d2:01,netdev=hostnet0 \
   -netdev user,id=hostnet0,hostfwd=tcp::8080-:8080 \
   -nographic -no-reboot -parallel none \

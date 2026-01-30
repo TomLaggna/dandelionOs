@@ -20,8 +20,8 @@ pub enum EngineType {
     Process,
     #[cfg(feature = "kvm")]
     Kvm,
-    #[cfg(feature = "unikernel")]
-    Unikernel,
+    #[cfg(feature = "unikraft")]
+    Unikraft,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -34,8 +34,8 @@ pub enum DomainType {
     RWasm,
     #[cfg(feature = "mmu")]
     Process,
-    #[cfg(feature = "unikernel")]
-    Malloc,
+    #[cfg(feature = "unikraft")]
+    Unikraft,
 }
 
 pub fn get_compatibilty_table() -> BTreeMap<EngineType, DomainType> {
@@ -50,8 +50,8 @@ pub fn get_compatibilty_table() -> BTreeMap<EngineType, DomainType> {
         (EngineType::Process, DomainType::Process),
         #[cfg(feature = "kvm")]
         (EngineType::Kvm, DomainType::Mmap),
-        #[cfg(feature = "unikernel")]
-        (EngineType::Unikernel, DomainType::Malloc),
+        #[cfg(feature = "unikraft")]
+        (EngineType::Unikraft, DomainType::Unikraft),
     ]);
 }
 
@@ -85,6 +85,8 @@ pub fn get_available_domains(
         ),
         #[cfg(feature = "wasm")]
         (DomainType::RWasm, MemoryResource::Anonymous { size: 0 }),
+        #[cfg(feature = "unikraft")]
+        (DomainType::Unikraft, MemoryResource::Anonymous { size: 0 }),
     ]);
     for (dom, resource) in resources {
         default_resources.insert(dom, resource);
@@ -118,10 +120,10 @@ pub fn get_available_domains(
                 dom_type,
                 Arc::new(crate::memory_domain::wasm::WasmMemoryDomain::init(resource).unwrap()),
             ),
-            #[cfg(feature = "unikernel")]
-            DomainType::Malloc => (
+            #[cfg(feature = "unikraft")]
+            DomainType::Unikraft => (
                 dom_type,
-                Arc::new(crate::memory_domain::malloc::MallocMemoryDomain::init(resource).unwrap()),
+                Arc::new(crate::memory_domain::unikraft::UnikraftMemoryDomain::init(resource).unwrap()),
             ),
         })
         .collect();
@@ -164,11 +166,11 @@ pub fn get_available_drivers() -> BTreeMap<EngineType, &'static dyn Driver> {
                 crate::function_driver::compute_driver::kvm::KvmDriver {},
             )) as &'static dyn Driver,
         ),
-        #[cfg(feature = "unikernel")]
+        #[cfg(feature = "unikraft")]
         (
-            EngineType::Unikernel,
+            EngineType::Unikraft,
             Box::leak(Box::new(
-                crate::function_driver::compute_driver::unikernel::UnikernelDriver {},
+                crate::function_driver::compute_driver::unikraft::UnikraftDriver {},
             )) as &'static dyn Driver,
         ),
     ]);

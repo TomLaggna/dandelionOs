@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["bytes_context", "reqwest_io", "unikernel"]
+default = ["bytes_context", "reqwest_io", "unikraft"]
 std = []
 # cheri = ["std"]
 # mmu = ["std"]
@@ -15,7 +15,7 @@ bytes_context = ["std", "dep:bytes"]
 # wasm = ["std"]
 # timestamp = ["dandelion_commons/timestamp"]
 # test_export = []
-unikernel = ["std"]
+unikraft = ["std"]
 
 [build-dependencies]
 # cmake = "0.1"

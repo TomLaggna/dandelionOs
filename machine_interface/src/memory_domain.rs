@@ -9,6 +9,8 @@ pub mod mmap;
 pub mod mmu;
 pub mod read_only;
 pub(crate) mod system_domain;
+#[cfg(feature = "unikraft")]
+pub mod unikraft;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
@@ -43,6 +45,8 @@ pub enum ContextType {
     Cheri(Box<cheri::CheriContext>),
     #[cfg(feature = "mmu")]
     Mmu(Box<mmu::MmuContext>),
+    #[cfg(feature = "unikraft")]
+    Unikraft(Box<unikraft::UnikraftContext>),
     #[cfg(feature = "wasm")]
     Wasm(Box<wasm::WasmContext>),
     System(Box<system_domain::SystemContext>),
@@ -58,6 +62,8 @@ impl ContextTrait for ContextType {
             ContextType::Cheri(context) => context.write(offset, data),
             #[cfg(feature = "mmu")]
             ContextType::Mmu(context) => context.write(offset, data),
+            #[cfg(feature = "unikraft")]
+            ContextType::Unikraft(context) => context.write(offset, data),
             #[cfg(feature = "wasm")]
             ContextType::Wasm(context) => context.write(offset, data),
             #[cfg(feature = "bytes_context")]
@@ -74,6 +80,8 @@ impl ContextTrait for ContextType {
             ContextType::Cheri(context) => context.read(offset, read_buffer),
             #[cfg(feature = "mmu")]
             ContextType::Mmu(context) => context.read(offset, read_buffer),
+            #[cfg(feature = "unikraft")]
+            ContextType::Unikraft(context) => context.read(offset, read_buffer),
             #[cfg(feature = "wasm")]
             ContextType::Wasm(context) => context.read(offset, read_buffer),
             #[cfg(feature = "bytes_context")]
@@ -90,6 +98,8 @@ impl ContextTrait for ContextType {
             ContextType::Cheri(context) => context.get_chunk_ref(offset, length),
             #[cfg(feature = "mmu")]
             ContextType::Mmu(context) => context.get_chunk_ref(offset, length),
+            #[cfg(feature = "unikraft")]
+            ContextType::Unikraft(context) => context.get_chunk_ref(offset, length),
             #[cfg(feature = "wasm")]
             ContextType::Wasm(context) => context.get_chunk_ref(offset, length),
             #[cfg(feature = "bytes_context")]
@@ -320,6 +330,26 @@ pub fn transfer_memory(
         #[cfg(all(feature = "wasm", feature = "bytes_context"))]
         (ContextType::Wasm(destination_ctxt), ContextType::Bytes(source_ctxt)) => {
             wasm::bytes_to_wasm_transfer(
+                destination_ctxt,
+                &source_ctxt,
+                destination_offset,
+                source_offset,
+                size,
+            )
+        }
+        #[cfg(feature = "unikraft")]
+        (ContextType::Unikraft(destination_ctxt), ContextType::Unikraft(source_ctxt)) => {
+            unikraft::unikraft_transfer(
+                destination_ctxt,
+                &source_ctxt,
+                destination_offset,
+                source_offset,
+                size,
+            )
+        }
+        #[cfg(all(feature = "unikraft", feature = "bytes_context"))]
+        (ContextType::Unikraft(destination_ctxt), ContextType::Bytes(source_ctxt)) => {
+            unikraft::bytes_to_unikraft_transfer(
                 destination_ctxt,
                 &source_ctxt,
                 destination_offset,

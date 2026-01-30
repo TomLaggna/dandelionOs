@@ -10,8 +10,8 @@
 // #[cfg(feature = "wasm")]
 // pub mod wasm;
 
-#[cfg(feature = "unikernel")]
-pub mod unikernel;
+#[cfg(feature = "unikraft")]
+pub mod unikraft;
 
 // #[cfg(test)]
 // mod compute_driver_tests;

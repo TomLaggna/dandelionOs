@@ -510,7 +510,7 @@ impl Dispatcher {
         non_caching: bool,
         mut recorder: Recorder,
     ) -> DandelionResult<(Context, FunctionConfig, Metadata)> {
-        debug!("Preparing function {} for engine", function_id);
+        debug!("Preparing function {} for engine with ctx_size: {} (0x{:x})", function_id, ctx_size, ctx_size);
         let metadata = self.function_registry.get_metadata(function_id).await?;
         // get context and load static data
         let context_id = match self.type_map.get(&engine_type) {

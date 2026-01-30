@@ -5,7 +5,7 @@ use crate::{
 use dandelion_commons::{DandelionError, DandelionResult};
 use std::sync::Arc;
 
-#[cfg(any(feature = "cheri", feature = "mmu", feature = "kvm", feature = "unikernel"))]
+#[cfg(any(feature = "cheri", feature = "mmu", feature = "kvm", feature = "unikraft"))]
 pub fn load_u8_from_file(full_path: String) -> DandelionResult<Vec<u8>> {
     let mut file = match std::fs::File::open(full_path) {
         Ok(f) => f,
@@ -27,6 +27,7 @@ pub fn load_static(
     requirement_list: &DataRequirementList,
     ctx_size: usize,
 ) -> DandelionResult<Context> {
+    log::debug!("load_static: acquiring context with size {} (0x{:x})", ctx_size, ctx_size);
     let mut function_context = domain.acquire_context(ctx_size)?;
 
     if static_context.content.len() != 1 {

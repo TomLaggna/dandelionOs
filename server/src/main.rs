@@ -184,6 +184,11 @@ async fn register_function(
     // find first line end character
     let request_map: RegisterFunction =
         bson::from_slice(&bytes).expect("Should be able to deserialize request");
+    
+    log::info!("Registering function '{}' with context_size: {} (0x{:x}), engine_type: {}, binary_len: {}", 
+        request_map.name, request_map.context_size, request_map.context_size, 
+        request_map.engine_type, request_map.binary.len());
+    
     // // if local is present ignore the binary
     // let path_string = if !request_map.local_path.is_empty() {
     //     // check that file exists
@@ -219,8 +224,8 @@ async fn register_function(
         "Kvm" => EngineType::Kvm,
         #[cfg(feature = "cheri")]
         "Cheri" => EngineType::Cheri,
-        #[cfg(feature = "unikernel")]
-        "Unikernel" => EngineType::Unikernel,
+        #[cfg(feature = "unikraft")]
+        "Unikraft" => EngineType::Unikraft,
         unkown => panic!("Unkown engine type string {}", unkown),
     };
     let input_sets = request_map
@@ -592,14 +597,14 @@ async fn main() {
     let engine_type = EngineType::Kvm;
     #[cfg(feature = "cheri")]
     let engine_type = EngineType::Cheri;
-    #[cfg(feature = "unikernel")]
-    let engine_type = EngineType::Unikernel;
+    #[cfg(feature = "unikraft")]
+    let engine_type = EngineType::Unikraft;
     #[cfg(any(
         feature = "cheri",
         feature = "wasm",
         feature = "mmu",
         feature = "kvm",
-        feature = "unikernel"
+        feature = "unikraft"
     ))]
     pool_map.insert(engine_type, compute_cores);
     #[cfg(feature = "reqwest_io")]
@@ -636,9 +641,9 @@ async fn main() {
             DomainType::RWasm,
             MemoryResource::Anonymous { size: max_ram },
         ),
-        #[cfg(feature = "unikernel")]
+        #[cfg(feature = "unikraft")]
         (
-            DomainType::Malloc,
+            DomainType::Unikraft,
             MemoryResource::Anonymous { size: max_ram },
         ),
     ]);
@@ -666,8 +671,8 @@ async fn main() {
     print!(" request_io");
     #[cfg(feature = "timestamp")]
     print!(" timestamp");
-    #[cfg(feature = "unikernel")]
-    print!(" unikernel");
+    #[cfg(feature = "unikraft")]
+    print!(" unikraft");
     print!("\n");
 
     // Run this server for... forever... unless I receive a signal!

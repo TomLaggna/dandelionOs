@@ -41,7 +41,7 @@ serial_test = "3.1.1"
 reqwest = { version = "0.12", default-features=false, features = ["http2", "charset", "blocking", "rustls-tls"] }
 
 [features]
-default = ["reqwest_io", "unikernel"]
+default = ["reqwest_io", "unikraft"]
 # archive = []
 # cheri = ["machine_interface/cheri"]
 # mmu = ["machine_interface/mmu"]
@@ -49,4 +49,4 @@ default = ["reqwest_io", "unikernel"]
 # wasm = ["machine_interface/wasm"]
 reqwest_io = ["machine_interface/reqwest_io"]
 # timestamp = ["dispatcher/timestamp"]
-unikernel = ["machine_interface/unikernel"]
+unikraft = ["machine_interface/unikraft"]

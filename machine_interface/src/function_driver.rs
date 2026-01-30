@@ -24,7 +24,7 @@ pub struct ElfConfig {
     #[cfg(feature = "cheri")]
     return_offset: (usize, usize),
     entry_point: usize,
-    #[cfg(any(feature = "mmu", feature = "unikernel"))]
+    #[cfg(any(feature = "mmu", feature = "unikraft"))]
     protection_flags: Arc<Vec<(u32, crate::Position)>>,
 }
 

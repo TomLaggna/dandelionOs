@@ -18,11 +18,11 @@ crossbeam = "0.8.4"
 tokio = { version = "1", features = ["full"] }
 
 [features]
-default = ["reqwest_io", "unikernel"]
+default = ["reqwest_io", "unikraft"]
 # cheri = ["machine_interface/cheri"]
 # wasm = ["machine_interface/wasm"]
 # mmu = ["machine_interface/mmu"]
 # kvm = ["machine_interface/kvm"]
 reqwest_io = ["machine_interface/reqwest_io"]
 # timestamp = ["dandelion_commons/timestamp"]
-unikernel = ["machine_interface/unikernel"]
+unikraft = ["machine_interface/unikraft"]

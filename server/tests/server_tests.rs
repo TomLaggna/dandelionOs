@@ -4,7 +4,7 @@
         feature = "mmu",
         feature = "kvm",
         feature = "cheri",
-        feature = "unikernel"
+        feature = "unikraft"
     ),
     feature = "reqwest_io"
 ))]
@@ -152,10 +152,10 @@ mod server_tests {
             version = "elf_cheri";
             engine_type = String::from("Cheri");
         }
-        #[cfg(feature = "unikernel")]
+        #[cfg(feature = "unikraft")]
         {
-            version = "elf_unikernel_x86_64";
-            engine_type = String::from("Unikernel");
+            version = "elf_unikraft_x86_64";
+            engine_type = String::from("Unikraft");
         }
         let matmul_path = format!(
             "{}/../machine_interface/tests/data/test_{}_matmul",

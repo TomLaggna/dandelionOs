@@ -6,7 +6,7 @@ const DEFAULT_CONFIG_PATH: &str = "./dandelion.config";
 const DEFAULT_PORT: u16 = 8080;
 const DEFAULT_SINGLE_CORE: bool = true;
 const DEFAULT_TIMESTAMP_COUNT: usize = 1000;
-const DEFAULT_RAM: usize = 128; // TODO use the same parameter as in QEMU
+const DEFAULT_RAM: usize = 64 * 1024 * 1024; // 64 MiB - matches DEFAULT_CONTEXT_SIZE in unikraft domain
 
 #[derive(serde::Deserialize, Parser, Debug)]
 pub struct DandelionConfig {
