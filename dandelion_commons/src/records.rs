@@ -36,6 +36,21 @@ pub enum RecordPoint {
     FutureReturn = LAST_RECORD_POINT,
 }
 
+const RECORD_POINT_NAMES: [&str; LAST_RECORD_POINT + 1] = [
+    "PrepareEnvQueue",
+    "ParsingQueue",
+    "ParsingStart",
+    "ParsingEnd",
+    "ParsingDequeue",
+    "LoadStart",
+    "TransferStart",
+    "GetEngineQueue",
+    "ExecutionQueue",
+    "EngineStart",
+    "EngineEnd",
+    "FutureReturn",
+];
+
 #[cfg(feature = "timestamp")]
 struct FunctionTimestamp {
     function_id: FunctionId,
@@ -77,23 +92,29 @@ impl FunctionTimestamp {
 #[cfg(feature = "timestamp")]
 impl fmt::Display for FunctionTimestamp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "function_id {}, time_points: ", self.function_id)?;
-        // write own time points
-        for index in 0..LAST_RECORD_POINT {
+        writeln!(f, "function_id: {}", self.function_id)?;
+        // write own time points with names
+        for index in 0..=LAST_RECORD_POINT {
             let duration = unsafe { *self.time_points[index].get() };
-            write!(f, "{},", duration.as_micros())?;
+            writeln!(
+                f,
+                "  {}: {} µs",
+                RECORD_POINT_NAMES[index],
+                duration.as_micros()
+            )?;
         }
-        let duration = unsafe { *self.time_points[LAST_RECORD_POINT].get() };
-        write!(f, "{}, children: {{", duration.as_micros())?;
         let child_guard = self.children.lock().unwrap();
-        let num_children = child_guard.len();
-        if num_children > 0 {
-            for index in 0..num_children - 1 {
-                write!(f, "[{}],", child_guard[index])?;
+        if !child_guard.is_empty() {
+            writeln!(f, "  children: {{",)?;
+            for child in child_guard.iter() {
+                // Indent child output
+                let child_str = format!("{}", child);
+                for line in child_str.lines() {
+                    writeln!(f, "    {}", line)?;
+                }
             }
-            write!(f, "[{}]", child_guard[num_children - 1])?;
+            write!(f, "  }}")?;
         }
-        write!(f, "}}")?;
         Ok(())
     }
 }
@@ -127,19 +148,11 @@ impl TimestampArchive {
         summary: &mut String,
         indent: usize,
     ) {
-        // push self
-        summary.push_str(&format!(
-            "{}function id:{}, creation:{:?}, durations: {:?}",
-            "-".repeat(indent),
-            timestamp.function_id,
-            timestamp.creation,
-            timestamp.time_points
-        ));
-        let child_guard = timestamp.children.lock().unwrap();
-        if child_guard.is_empty() {
-            summary.push_str(", children: ");
-        }
+        // push self with proper indentation, then use Display impl for the timestamp
+        summary.push_str(&"-".repeat(indent));
+        summary.push_str(&format!("{}", timestamp));
         summary.push('\n');
+        let child_guard = timestamp.children.lock().unwrap();
         for child in child_guard.iter() {
             self.append_timestamps(child, summary, indent + 1);
         }
