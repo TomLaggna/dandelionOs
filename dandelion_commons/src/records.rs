@@ -5,7 +5,7 @@ use std::time::Instant;
 /// Maximum usize to expect when converting a record point to a usize
 /// By setting the last element to this explicitly, the compiler will throw an error,
 /// if there are more than this, because it enumerates from 0 and won't allow a number to be assigned twice.
-const LAST_RECORD_POINT: usize = 11;
+const LAST_RECORD_POINT: usize = 13;
 
 #[repr(usize)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -30,6 +30,10 @@ pub enum RecordPoint {
     ExecutionQueue,
     /// Start execution of the function on the engine (sync)
     EngineStart,
+    /// End of engine setup, start of actual function execution (sync)
+    EngineSetupEnd,
+    /// End of actual function execution, start of cleanup (sync)
+    EngineExecEnd,
     /// End execution of the function on the engine (sync)
     EngineEnd,
     /// Return from execution engine (async)
@@ -47,6 +51,8 @@ const RECORD_POINT_NAMES: [&str; LAST_RECORD_POINT + 1] = [
     "GetEngineQueue",
     "ExecutionQueue",
     "EngineStart",
+    "EngineSetupEnd",
+    "EngineExecEnd",
     "EngineEnd",
     "FutureReturn",
 ];

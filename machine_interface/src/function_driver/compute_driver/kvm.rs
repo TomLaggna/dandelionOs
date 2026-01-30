@@ -10,7 +10,10 @@ use crate::{
     DataItem, DataRequirement, DataRequirementList, DataSet, Position,
 };
 use core_affinity;
-use dandelion_commons::{DandelionError, DandelionResult, UserError};
+use dandelion_commons::{
+    records::{RecordPoint, Recorder},
+    DandelionError, DandelionResult, UserError,
+};
 use kvm_bindings::{kvm_userspace_memory_region, KVM_MAX_CPUID_ENTRIES, KVM_MEM_LOG_DIRTY_PAGES};
 use kvm_ioctls::{Kvm, VcpuExit, VcpuFd, VmFd};
 use log::debug;
@@ -86,6 +89,7 @@ impl EngineLoop for KvmLoop {
         config: FunctionConfig,
         mut context: Context,
         output_sets: &Vec<String>,
+        recorder: &mut Recorder,
     ) -> DandelionResult<Context> {
         let elf_config = match config {
             FunctionConfig::ElfConfig(conf) => conf,
@@ -203,6 +207,9 @@ impl EngineLoop for KvmLoop {
             dump_regs(&self.vcpu);
         }
 
+        // Record end of setup, start of actual execution
+        recorder.record(RecordPoint::EngineSetupEnd);
+
         // start running the function
         loop {
             let reason = self.vcpu.run().unwrap();
@@ -232,6 +239,9 @@ impl EngineLoop for KvmLoop {
                 }
             }
         }
+
+        // Record end of actual function execution
+        recorder.record(RecordPoint::EngineExecEnd);
 
         let dirty_log = self.vm.get_dirty_log(0, kvm_context.storage.len()).unwrap();
 

@@ -10,7 +10,7 @@ use crate::{
     DataItem, DataRequirement, DataRequirementList, DataSet, Position,
 };
 use core_affinity;
-use dandelion_commons::{DandelionError, DandelionResult};
+use dandelion_commons::{records::Recorder, DandelionError, DandelionResult};
 use log::{debug, warn};
 use nix::{
     sys::{
@@ -183,6 +183,7 @@ impl EngineLoop for MmuLoop {
         config: FunctionConfig,
         mut context: Context,
         output_sets: &Vec<String>,
+        _recorder: &mut Recorder,
     ) -> DandelionResult<Context> {
         let elf_config = match config {
             FunctionConfig::ElfConfig(conf) => conf,

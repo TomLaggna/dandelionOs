@@ -3,7 +3,10 @@ use crate::{
     memory_domain::{self, Context},
 };
 use core::marker::Send;
-use dandelion_commons::{records::RecordPoint, DandelionResult};
+use dandelion_commons::{
+    records::{RecordPoint, Recorder},
+    DandelionResult,
+};
 use std::thread::spawn;
 
 extern crate alloc;
@@ -15,6 +18,7 @@ pub trait EngineLoop {
         config: FunctionConfig,
         context: Context,
         output_sets: &Vec<String>,
+        recorder: &mut Recorder,
     ) -> DandelionResult<Context>;
 }
 
@@ -92,6 +96,7 @@ fn run_thread<E: EngineLoop>(core_id: u8, queue: Box<dyn EngineWorkQueue>) {
                     function.config.clone(),
                     function_context,
                     &metadata.output_sets,
+                    &mut recorder,
                 );
 
                 if let Ok(ref context) = result {
