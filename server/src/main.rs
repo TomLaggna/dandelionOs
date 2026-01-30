@@ -34,7 +34,6 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, OnceLock,
     },
-    time::Instant,
 };
 use tokio::{
     net::TcpListener,
@@ -52,7 +51,6 @@ enum DispatcherCommand {
         name: String,
         inputs: Vec<DispatcherInput>,
         is_cold: bool,
-        start_time: Instant,
         callback: oneshot::Sender<DandelionResult<(Vec<Option<CompositionSet>>, Recorder)>>,
     },
     FunctionRegistration {
@@ -75,8 +73,6 @@ async fn serve_request(
     dispatcher: mpsc::Sender<DispatcherCommand>,
 ) -> Result<Response<DandelionBody>, Infallible> {
     debug!("Starting to serve request");
-
-    let start_time = Instant::now();
 
     // pull all frames from the network
     let mut incomming = req.into_body();
@@ -126,7 +122,6 @@ async fn serve_request(
             name: function_name,
             inputs,
             is_cold,
-            start_time: start_time.clone(),
             callback,
         })
         .await
@@ -367,12 +362,10 @@ async fn dispatcher_loop(
                 name,
                 inputs,
                 is_cold,
-                start_time,
                 mut callback,
             } => {
                 debug!("Handling function request for function {}", name);
-                let function_future =
-                    dispatcher.queue_function_by_name(name, inputs, is_cold, start_time);
+                let function_future = dispatcher.queue_function_by_name(name, inputs, is_cold);
                 spawn(async {
                     select! {
                         function_output = function_future => {

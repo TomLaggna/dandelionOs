@@ -1,6 +1,27 @@
 use crate::FunctionId;
 use core::fmt;
+
+#[cfg(not(feature = "timestamp"))]
 use std::time::Instant;
+
+/// CPU clock speed in MHz for converting cycles to time
+const CPU_MHZ: u64 = 2100;
+
+/// Read the CPU timestamp counter (RDTSC)
+#[cfg(feature = "timestamp")]
+#[inline(always)]
+fn rdtsc() -> u64 {
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        core::arch::x86_64::_rdtsc()
+    }
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        let cnt: u64;
+        core::arch::asm!("mrs {}, cntvct_el0", out(reg) cnt);
+        cnt
+    }
+}
 
 /// Maximum usize to expect when converting a record point to a usize
 /// By setting the last element to this explicitly, the compiler will throw an error,
@@ -60,8 +81,8 @@ const RECORD_POINT_NAMES: [&str; LAST_RECORD_POINT + 1] = [
 #[cfg(feature = "timestamp")]
 struct FunctionTimestamp {
     function_id: FunctionId,
-    creation: Instant,
-    time_points: [core::cell::UnsafeCell<std::time::Duration>; LAST_RECORD_POINT + 1],
+    creation: u64,
+    time_points: [core::cell::UnsafeCell<u64>; LAST_RECORD_POINT + 1],
     children: std::sync::Mutex<Vec<FunctionTimestamp>>,
 }
 #[cfg(feature = "timestamp")]
@@ -71,22 +92,22 @@ unsafe impl Sync for FunctionTimestamp {}
 
 #[cfg(feature = "timestamp")]
 impl FunctionTimestamp {
-    fn new(function_id: FunctionId, creation: Instant) -> std::sync::Arc<Self> {
+    fn new(function_id: FunctionId, creation: u64) -> std::sync::Arc<Self> {
         return std::sync::Arc::new(Self {
             function_id,
             creation,
-            time_points: [const { core::cell::UnsafeCell::new(std::time::Duration::ZERO) };
-                LAST_RECORD_POINT + 1],
+            time_points: [const { core::cell::UnsafeCell::new(0u64) }; LAST_RECORD_POINT + 1],
             children: std::sync::Mutex::new(Vec::new()),
         });
     }
 
     fn record(self: &std::sync::Arc<Self>, current_point: RecordPoint) {
-        let new_duration = self.creation.elapsed();
+        let current_tsc = rdtsc();
+        let elapsed_cycles = current_tsc.saturating_sub(self.creation);
         // each point is only present once in the code, so we can be sure we can write there safely,
         // and sice it is in arc know the memory exists and will not be dropped during writing
         let reference = core::cell::UnsafeCell::raw_get(&self.time_points[current_point as usize]);
-        unsafe { *reference = new_duration };
+        unsafe { *reference = elapsed_cycles };
     }
 
     fn add_children(self: &mut std::sync::Arc<Self>, new_child: std::sync::Arc<Self>) {
@@ -99,19 +120,19 @@ impl FunctionTimestamp {
 impl fmt::Display for FunctionTimestamp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "function_id: {}", self.function_id)?;
-        // write own time points with names
+        // write own time points with names (cycles and nanoseconds)
         for index in 0..=LAST_RECORD_POINT {
-            let duration = unsafe { *self.time_points[index].get() };
+            let cycles = unsafe { *self.time_points[index].get() };
+            let micros = cycles / CPU_MHZ;
             writeln!(
                 f,
-                "  {}: {} µs",
-                RECORD_POINT_NAMES[index],
-                duration.as_micros()
+                "  {}: {} cycles ({} μs)",
+                RECORD_POINT_NAMES[index], cycles, micros
             )?;
         }
         let child_guard = self.children.lock().unwrap();
         if !child_guard.is_empty() {
-            writeln!(f, "  children: {{",)?;
+            writeln!(f, "  children: {{")?;
             for child in child_guard.iter() {
                 // Indent child output
                 let child_str = format!("{}", child);
@@ -179,18 +200,28 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn new(_function_id: FunctionId, _start: Instant) -> Self {
+    #[cfg(feature = "timestamp")]
+    pub fn new(_function_id: FunctionId) -> Self {
         return Self {
-            #[cfg(feature = "timestamp")]
-            timestamps: FunctionTimestamp::new(_function_id, _start),
+            timestamps: FunctionTimestamp::new(_function_id, rdtsc()),
         };
     }
 
+    #[cfg(not(feature = "timestamp"))]
+    pub fn new(_function_id: FunctionId, _start: Instant) -> Self {
+        return Self {};
+    }
+
+    #[cfg(feature = "timestamp")]
     pub fn new_from_parent(_function_id: FunctionId, _parent: &Self) -> Self {
         return Self {
-            #[cfg(feature = "timestamp")]
             timestamps: FunctionTimestamp::new(_function_id, _parent.timestamps.creation),
         };
+    }
+
+    #[cfg(not(feature = "timestamp"))]
+    pub fn new_from_parent(_function_id: FunctionId, _parent: &Self) -> Self {
+        return Self {};
     }
 
     pub fn record(&mut self, _current_point: RecordPoint) {

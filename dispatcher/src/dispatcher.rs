@@ -125,11 +125,10 @@ impl Dispatcher {
         function_name: String,
         inputs: Vec<DispatcherInput>,
         caching: bool,
-        start_time: std::time::Instant,
     ) -> DandelionResult<(Vec<Option<CompositionSet>>, Recorder)> {
         debug!("Queuing function {}", function_name);
         let function_id = Arc::new(function_name);
-        let recorder = Recorder::new(function_id.clone(), start_time);
+        let recorder = Recorder::new(function_id.clone());
 
         let mut input_vec = Vec::with_capacity(inputs.len());
         input_vec.resize(inputs.len(), None);

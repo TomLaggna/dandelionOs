@@ -355,7 +355,7 @@ impl FunctionRegistry {
         let new_future = (Box::pin(load_local(
             static_domain,
             driver,
-            Recorder::new(function_id.clone(), std::time::Instant::now()),
+            Recorder::new(function_id.clone()),
             work_queue,
             vec![engine_type],
             path.clone(),
