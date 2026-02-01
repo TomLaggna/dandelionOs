@@ -5,7 +5,7 @@ use core::fmt;
 use std::time::Instant;
 
 /// CPU clock speed in MHz for converting cycles to time
-const CPU_MHZ: u64 = 2100;
+const CPU_MHZ: f64 = 2304.009; // read as the TSC clock speed on my test machine
 
 /// Read the CPU timestamp counter (RDTSC)
 #[cfg(feature = "timestamp")]
@@ -123,7 +123,7 @@ impl fmt::Display for FunctionTimestamp {
         // write own time points with names (cycles and nanoseconds)
         for index in 0..=LAST_RECORD_POINT {
             let cycles = unsafe { *self.time_points[index].get() };
-            let micros = cycles / CPU_MHZ;
+            let micros = ((cycles as f64) / CPU_MHZ) as u64;
             writeln!(
                 f,
                 "  {}: {} cycles ({} μs)",
