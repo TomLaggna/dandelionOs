@@ -38,9 +38,9 @@ reqwest = { version = "0.12", features = ["blocking"] }
 
 [features]
 archive = []
-cheri = ["machine_interface/cheri"]
-mmu = ["machine_interface/mmu"]
-kvm = ["machine_interface/kvm"]
-reqwest_io = ["machine_interface/reqwest_io"]
+cheri = ["machine_interface/cheri", "dispatcher/cheri"]
+mmu = ["machine_interface/mmu", "dispatcher/mmu"]
+kvm = ["machine_interface/kvm", "dispatcher/kvm"]
+reqwest_io = ["machine_interface/reqwest_io", "dispatcher/reqwest_io"]
 timestamp = ["dispatcher/timestamp"]
 log_function_stdio = ["dispatcher/log_function_stdio"]

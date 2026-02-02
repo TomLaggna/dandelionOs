@@ -1,4 +1,7 @@
-use dandelion_commons::{DandelionError, DandelionResult};
+use dandelion_commons::{
+    records::{RecordPoint, Recorder},
+    DandelionError, DandelionResult,
+};
 use kvm_bindings::{kvm_fpu, kvm_regs, kvm_segment, kvm_sregs, kvm_xcrs};
 use kvm_ioctls::{VcpuFd, VmFd};
 use log::{debug, trace};
@@ -157,12 +160,17 @@ impl ResetState {
         initialized_pages: Vec<(usize, usize, Option<usize>)>,
         mut stack_pointer: usize,
         last_address: usize,
+        recorder: &mut Recorder,
     ) -> DandelionResult<PageFaultMetadata> {
         let mut sregs = self.sregs.clone();
         let xregs = self.xregs.clone();
         let interrupt_end = stack_pointer;
         set_interrupt_table(&mut sregs, guest_mem, &mut stack_pointer);
         let interrupt_start = stack_pointer;
+
+        // Record interrupt setup complete
+        recorder.record(RecordPoint::InterruptSetupComplete);
+
         let page_fault_metadata;
         (stack_pointer, page_fault_metadata) = set_page_table(
             &mut sregs,
@@ -171,6 +179,7 @@ impl ResetState {
             stack_pointer,
             (interrupt_start, interrupt_end),
             last_address,
+            recorder,
         )?;
 
         vcpu.set_sregs(&sregs).unwrap();
@@ -466,6 +475,7 @@ fn set_page_table(
     mut stack_start: usize,
     interrupt_range: (usize, usize),
     last_address: usize,
+    recorder: &mut Recorder,
 ) -> DandelionResult<(usize, PageFaultMetadata)> {
     // allocate top level table containing 512 entries for 512 GB ranges, total of 256 TB
     // naming:
@@ -556,6 +566,9 @@ fn set_page_table(
         );
     }
 
+    // Record user code mapping complete
+    recorder.record(RecordPoint::UserCodeMappingComplete);
+
     // need to set page for stack
     let stack_page_start = stack_start & !(LARGE_PAGE - 1);
     guest_mem[stack_page_start..stack_start].fill(0);
@@ -568,6 +581,9 @@ fn set_page_table(
         stack_page_start,
         previous_past_last_page,
     );
+
+    // Record user stack mapping complete
+    recorder.record(RecordPoint::UserStackMappingComplete);
 
     // the page tables also need to be accessable to root mode
     previous_past_last_page = set_range(

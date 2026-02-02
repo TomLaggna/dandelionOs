@@ -179,6 +179,9 @@ impl EngineLoop for KvmLoop {
             self.vm.set_user_memory_region(region).unwrap();
         }
 
+        // Record buffer allocation complete
+        recorder.record(RecordPoint::BufferAllocationComplete);
+
         // initialize vCPU
         let page_fault_metadata = self.state.init_vcpu(
             &self.vcpu,
@@ -187,6 +190,7 @@ impl EngineLoop for KvmLoop {
             mappings,
             stack_start,
             kvm_context.storage.len(),
+            recorder,
         )?;
 
         // make sure that the stack start has not moved into the occupied territory

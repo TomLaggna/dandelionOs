@@ -26,7 +26,7 @@ fn rdtsc() -> u64 {
 /// Maximum usize to expect when converting a record point to a usize
 /// By setting the last element to this explicitly, the compiler will throw an error,
 /// if there are more than this, because it enumerates from 0 and won't allow a number to be assigned twice.
-const LAST_RECORD_POINT: usize = 13;
+const LAST_RECORD_POINT: usize = 17;
 
 #[repr(usize)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -51,6 +51,14 @@ pub enum RecordPoint {
     ExecutionQueue,
     /// Start execution of the function on the engine (sync)
     EngineStart,
+    /// KVM: Buffer allocation complete (VM memory region attached)
+    BufferAllocationComplete,
+    /// KVM: User code mapping complete (code pages mapped in page tables)
+    UserCodeMappingComplete,
+    /// KVM: User stack mapping complete (stack pages mapped)
+    UserStackMappingComplete,
+    /// KVM: Interrupt setup complete (IDT and handlers installed)
+    InterruptSetupComplete,
     /// End of engine setup, start of actual function execution (sync)
     EngineSetupEnd,
     /// End of actual function execution, start of cleanup (sync)
@@ -72,6 +80,10 @@ const RECORD_POINT_NAMES: [&str; LAST_RECORD_POINT + 1] = [
     "GetEngineQueue",
     "ExecutionQueue",
     "EngineStart",
+    "BufferAllocationComplete",
+    "UserCodeMappingComplete",
+    "UserStackMappingComplete",
+    "InterruptSetupComplete",
     "EngineSetupEnd",
     "EngineExecEnd",
     "EngineEnd",
